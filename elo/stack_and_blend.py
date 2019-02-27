@@ -24,10 +24,9 @@ save_loc = 'results/stack_n_blend/'
 
 model_list = {'lightGBM': ms.lightgbm_train, 
                 'XGB': ms.xgb_train,
-                #'lightGBMdart': ms.lightgbm_dart,
-                'lightGMBrf': ms.lightgbm_rf}#,
-                #'RF': ms.rf_train,  
-                #'extra': ms.extratrees_train}
+                'lightGMBrf': ms.lightgbm_rf,
+                'RF': ms.rf_train,  
+                'extra': ms.extratrees_train}
 
 sel_list = {'only_hist': fs.sel_hist, 
             'only_new': fs.sel_new, 
@@ -47,7 +46,7 @@ def stack():
 
     kfolds = KFold(5, shuffle=True, random_state=42)
 
-    '''
+    
     predictions, cv_score, feat_imp, oof = ms.rf_train(train, test, target, kfolds)
 
     print(f'random forest:\t {cv_score}')
@@ -65,7 +64,7 @@ def stack():
     sub_df['target'] = predictions
     sub_df.to_csv('stack_extratrees.csv', index=False)
     feat_imp.to_csv('stack_extratrees_featimp.csv', index=False)
-    '''
+    
     predictions, cv_score, feat_imp, oof = ms.lightgbm_train(train, test, target, kfolds)
 
     print(f'lightGBM:\t {cv_score}')
@@ -233,7 +232,7 @@ def stack_with_features():
 
 
 if __name__=="__main__":
-    #single_model()
-    #stack()
-    #blend()
+    single_model()
+    stack()
+    blend()
     stack_with_features()

@@ -34,7 +34,7 @@ def read_data(input_file):
 
 agg_loc = 'processed_data/'
 
-'''
+
 switcher = {'remove_2m': fe.remove_2m, 
     'spread': fe.make_spread,
     'comb_cats': fe.combine_categs,
@@ -42,12 +42,10 @@ switcher = {'remove_2m': fe.remove_2m,
     'fractions': fe.make_fractions,
     'differences': fe.make_differences,
     'trends_no2m': fe.trends_no2m,
-    'spread_no2m': fe.spread_no2m}
-'''
-
-switcher = {'remove_max_min': fe.remove_max_min}#, 
-            #'make_train_feats': fe.make_train_feats,
-            #'clv': fe.clv}
+    'spread_no2m': fe.spread_no2m,
+    #'make_train_feats': fe.make_train_feats,
+    #'clv': fe.clv
+    'remove_max_min': fe.remove_max_min}
 
 
 def main():
@@ -99,7 +97,7 @@ def main():
         
 
     final = pd.DataFrame.from_dict(results, orient='index', columns=['CV_score'])
-    #final.to_csv('results/0219_fe_selection.csv')
+    final.to_csv('results/0219_fe_selection.csv')
 
 
 if __name__=="__main__":

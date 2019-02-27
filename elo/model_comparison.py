@@ -29,13 +29,13 @@ def read_data(input_file):
 
 
 agg_loc = 'processed_data/'
-aggs = {#'new_tr': 'new_agg.csv',
-#    'full_hist': 'full_history_agg.csv', 
-#    'full_hist_auth': 'full_history_agg_auth.csv',
-#    'hist_w_2m': 'hist_agg_by2months.csv', 
-#    'total_agg': 'total_aggregation.csv',
-#    'total_agg_auth': 'total_aggregation_auth.csv',
-#    'FE_fractions': 'total_aggregation_with_FE.csv',
+aggs = {'new_tr': 'new_agg.csv',
+    'full_hist': 'full_history_agg.csv', 
+    'full_hist_auth': 'full_history_agg_auth.csv',
+    'hist_w_2m': 'hist_agg_by2months.csv', 
+    'total_agg': 'total_aggregation.csv',
+    'total_agg_auth': 'total_aggregation_auth.csv',
+    'FE_fractions': 'total_aggregation_with_FE.csv',
     'FE_frac_diff': 'total_aggregation_with_FE_0219.csv'}
 '''
 aggs = {'2_months': 'agg_h2_transactions.csv', 
