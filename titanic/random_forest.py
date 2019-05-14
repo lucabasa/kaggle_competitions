@@ -120,8 +120,8 @@ def quick_forest(df_train, df_test, kfolds):
 
 def forest_w_imputation(df_train, df_test, kfolds):
     # preparing data with minimal features
-    train = df_train.dropna(axis=1).copy()
-    test = df_test.dropna(axis=1).copy()
+    train = df_train.copy()
+    test = df_test.copy()
 
     target = train.Survived.copy()
 
