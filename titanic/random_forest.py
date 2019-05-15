@@ -39,94 +39,8 @@ def tune_rf(train, target, verbose=False):
     return grid.best_params_
 
 
-def quick_forest(df_train, df_test, kfolds):
-    # preparing data with minimal features
-    train = df_train.dropna(axis=1).copy()
-    test = df_test.dropna(axis=1).copy()
-
-    target = train.Survived.copy()
-
-    sub = test[['PassengerId']].copy()
-
-    del train['Survived']
-    del train['Name']
-    del train['Ticket']
-    del train['PassengerId']
-    del test['PassengerId']
-    del test['Name']
-    del test['Embarked']
-
-    train['Sex'] = train.Sex.map({'male': 1, 'female': 0}).astype(int)
-    test['Sex'] = test.Sex.map({'male': 1, 'female': 0}).astype(int)
-
-    # model 
-    oof = np.zeros(len(train))
-    predictions = np.zeros(len(test))
-    feature_importance_df = pd.DataFrame()
-
-    comm_cols = list(set(train.columns).intersection(test.columns))
-
-    for fold_, (trn_idx, val_idx) in enumerate(kfolds.split(train.values, target.values)):
-        print("fold n°{}".format(fold_))
-
-        trn_data = train.iloc[trn_idx][comm_cols]
-        val_data = train.iloc[val_idx][comm_cols]
-
-        trn_target = target.iloc[trn_idx]
-        val_target = target.iloc[val_idx]
-        
-        params = tune_rf(trn_data, trn_target, verbose=True)
-        forest = RandomForestClassifier(n_estimators=700, n_jobs=4, random_state=189,
-                                            max_depth=params['max_depth'], 
-                                            min_samples_split=params['min_samples_split'],
-                                            min_samples_leaf=params['min_samples_leaf'],
-                                            max_features=params['max_features'])
-
-        clf = forest.fit(trn_data, trn_target)
-
-        oof[val_idx] = clf.predict(train.iloc[val_idx][comm_cols])
-        predictions += clf.predict_proba(test[comm_cols])[:,1] / kfolds.n_splits
-
-        fold_importance_df = pd.DataFrame()
-        fold_importance_df["feature"] = comm_cols
-        fold_importance_df["importance"] = clf.feature_importances_
-        fold_importance_df["fold"] = fold_ + 1
-        feature_importance_df = pd.concat([feature_importance_df, fold_importance_df], axis=0)
-        
-    print(accuracy_score(oof, df_train.Survived))
-    print(f1_score(oof, df_train.Survived))
-    print(roc_auc_score(oof, df_train.Survived))
-    print(classification_report(oof, df_train.Survived))
-
-    cols = (feature_importance_df[["feature", "importance"]]
-                    .groupby("feature")
-                    .mean().abs()
-                    .sort_values(by="importance", ascending=False)[:50].index)
-
-    best_features = feature_importance_df.loc[feature_importance_df.feature.isin(cols)]
-
-    sns.barplot(x="importance",
-                y="feature",
-                data=best_features.sort_values(by="importance",
-                                               ascending=False))
-
-    plt.savefig('plots/rf_simple_featimp.png')
-    plt.close()
-
-    sub['Survived'] = (predictions > 0.5).astype(int) 
-
-    sub.to_csv('submissions/rf_simple.csv', index=False)
-
-
-def forest_w_imputation(df_train, df_test, kfolds):
-    # preparing data with minimal features
-    train = df_train.copy()
-    test = df_test.copy()
-
-    target = train.Survived.copy()
-
-    sub = test[['PassengerId']].copy()
-
+def general_processing(train, test):
+    # processing train and test outside the cv loop
     train['Sex'] = train.Sex.map({'male': 1, 'female': 0}).astype(int)
     test['Sex'] = test.Sex.map({'male': 1, 'female': 0}).astype(int)
 
@@ -150,15 +64,81 @@ def forest_w_imputation(df_train, df_test, kfolds):
     del test['Name']
     del test['Ticket']
     del test['Cabin']
-   
+
+    return train, test
+
+
+def impute_test(train, test):
+    # using train data to impute the missing test entries
+    test.loc[test.Age.isna(), 'Age'] = train.Age.median()
+    test.loc[test.Fare.isna(), 'Fare'] = train.Fare.median()
+
+    return test
+
+
+def process_fold(trn_fold, val_fold):
+    # impute only with the training data of the fold
+    trn_fold.loc[trn_fold.Age.isna(), 'Age'] = trn_fold.Age.median()
+    trn_fold.loc[trn_fold.Embarked.isna(), 'Embarked'] =trn_fold.Embarked.mode().values[0]
+    
+    val_fold.loc[val_fold.Age.isna(), 'Age'] = trn_fold.Age.median()
+    val_fold.loc[val_fold.Embarked.isna(), 'Embarked'] = trn_fold.Embarked.mode().values[0]
+    
+    trn_fold = pd.get_dummies(trn_fold)
+    val_fold = pd.get_dummies(val_fold)
+
+    return trn_fold, val_fold
+
+
+def plot_importance(feature_importance_df, save_name):
+    cols = (feature_importance_df[["feature", "importance"]]
+                    .groupby("feature")
+                    .mean().abs()
+                    .sort_values(by="importance", ascending=False)[:50].index)
+
+    best_features = feature_importance_df.loc[feature_importance_df.feature.isin(cols)]
+
+    plt.figure(figsize=(15,8))
+
+    sns.barplot(x="importance",
+                y="feature",
+                data=best_features.sort_values(by="importance",
+                                               ascending=False))
+    
+    if not save_name.endswith('.png'):
+        save_name += '.png'
+    plt.savefig('plots/' + save_name)
+    plt.close()
+
+
+def report_oof(df_train, oof):
+    acc = accuracy_score(oof, df_train.Survived)
+    f1 = f1_score(oof, df_train.Survived)
+    roc = roc_auc_score(oof, df_train.Survived)
+    print(f'Oof accuracy: \t {acc}')
+    print(f'Oof f1 score: \t {f1}')
+    print(f'Oof area under the roc curve: \t {roc}')
+    print('Classification report: ')
+    print(classification_report(oof, df_train.Survived))
+
+
+def train_rf(df_train, df_test, kfolds):
+    # preparing data with minimal features
+    train = df_train.copy()
+    test = df_test.copy()
+
+    target = train.Survived.copy()
+
+    sub = test[['PassengerId']].copy()
+
+    train, test = general_processing(train, test)
+
     # model
     oof = np.zeros(len(train))
     predictions = np.zeros(len(test))
     feature_importance_df = pd.DataFrame()
 
-    # using train data to impute the missing test entries
-    test.loc[test.Age.isna(), 'Age'] = train.Age.median()
-    test.loc[test.Fare.isna(), 'Fare'] = train.Fare.median()
+    test = impute_test(train, test)
 
     test = pd.get_dummies(test)
 
@@ -171,15 +151,7 @@ def forest_w_imputation(df_train, df_test, kfolds):
         trn_target = target.iloc[trn_idx]
         val_target = target.iloc[val_idx]
         
-        # impute only with the training data of the fold
-        trn_data.loc[trn_data.Age.isna(), 'Age'] = trn_data.Age.median()
-        trn_data.loc[trn_data.Embarked.isna(), 'Embarked'] =trn_data.Embarked.mode().values[0]
-        
-        val_data.loc[val_data.Age.isna(), 'Age'] = trn_data.Age.median()
-        val_data.loc[val_data.Embarked.isna(), 'Embarked'] = trn_data.Embarked.mode().values[0]
-        
-        trn_data = pd.get_dummies(trn_data)
-        val_data = pd.get_dummies(val_data)
+        trn_data, val_data = process_fold(trn_data, val_data)
 
         params = tune_rf(trn_data, trn_target, verbose=True)
         forest = RandomForestClassifier(n_estimators=700, n_jobs=4, random_state=189,
@@ -199,25 +171,9 @@ def forest_w_imputation(df_train, df_test, kfolds):
         fold_importance_df["fold"] = fold_ + 1
         feature_importance_df = pd.concat([feature_importance_df, fold_importance_df], axis=0)
 
-    print(accuracy_score(oof, df_train.Survived))
-    print(f1_score(oof, df_train.Survived))
-    print(roc_auc_score(oof, df_train.Survived))
-    print(classification_report(oof, df_train.Survived))
+    report_oof(df_train, oof)
 
-    cols = (feature_importance_df[["feature", "importance"]]
-                    .groupby("feature")
-                    .mean().abs()
-                    .sort_values(by="importance", ascending=False)[:50].index)
-
-    best_features = feature_importance_df.loc[feature_importance_df.feature.isin(cols)]
-
-    sns.barplot(x="importance",
-                y="feature",
-                data=best_features.sort_values(by="importance",
-                                               ascending=False))
-
-    plt.savefig('plots/rf_imputed_featimp.png')
-    plt.close()
+    plot_importance(feature_importance_df, 'rf_imputed_featimp')
 
     sub['Survived'] = (predictions > 0.5).astype(int) 
 
@@ -231,9 +187,7 @@ def main():
 
     kfolds = KFold(n_splits=5, shuffle=True, random_state=498)
 
-    quick_forest(df_train, df_test, kfolds)
-
-    forest_w_imputation(df_train, df_test, kfolds)
+    train_rf(df_train, df_test, kfolds)
 
 
 if __name__ == '__main__':
