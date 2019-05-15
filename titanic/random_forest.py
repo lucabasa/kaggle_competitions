@@ -55,11 +55,16 @@ def general_processing(train, test):
     test['MisCab'] = 0
     test.loc[test.Cabin.isna(), 'MisCab'] = 1
 
+    # fam size
+    train['FamSize'] = train['SibSp'] + train['Parch'] + 1
+    test['FamSize'] = test['SibSp'] + test['Parch'] + 1
+
     del train['Survived']
     del train['Name']
     del train['Ticket']
     del train['PassengerId']
     del train['Cabin']
+
     del test['PassengerId']
     del test['Name']
     del test['Ticket']
@@ -104,7 +109,7 @@ def plot_importance(feature_importance_df, save_name):
                 y="feature",
                 data=best_features.sort_values(by="importance",
                                                ascending=False))
-    
+
     if not save_name.endswith('.png'):
         save_name += '.png'
     plt.savefig('plots/' + save_name)
@@ -173,11 +178,11 @@ def train_rf(df_train, df_test, kfolds):
 
     report_oof(df_train, oof)
 
-    plot_importance(feature_importance_df, 'rf_imputed_featimp')
+    plot_importance(feature_importance_df, 'rf_fe_featimp')
 
     sub['Survived'] = (predictions > 0.5).astype(int) 
 
-    sub.to_csv('submissions/rf_imputed.csv', index=False)
+    sub.to_csv('submissions/rf_feat_eng.csv', index=False)
 
 
 
