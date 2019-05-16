@@ -58,11 +58,11 @@ def general_processing(train, test):
     train['fs_cl'] = train.fam_size * train.Pclass
     test['fs_cl'] = test.fam_size * test.Pclass
 
-    # isAlone  # todo: disabled temporarily
-    # train['is_alone'] = 0
-    # train.loc[train.FamSize==1, 'is_alone'] = 1
-    # test['is_alone'] = 0
-    # test.loc[test.FamSize==1, 'is_alone'] = 1
+    # isAlone  
+    train['is_alone'] = 0
+    train.loc[train.FamSize==1, 'is_alone'] = 1
+    test['is_alone'] = 0
+    test.loc[test.FamSize==1, 'is_alone'] = 1
 
     # Missing cabin and gender
     train = pr.gen_cab(train)
@@ -81,7 +81,7 @@ def impute_test(train, test):
     test.loc[test.Age.isna(), 'Age'] = train.Age.median()
     test.loc[test.Fare.isna(), 'Fare'] = train.Fare.median()
 
-    test = pd.get_dummies(test, drop_first=True)
+    test = pd.get_dummies(test)
 
     return test
 
@@ -94,8 +94,8 @@ def process_fold(trn_fold, val_fold):
     val_fold.loc[val_fold.Age.isna(), 'Age'] = trn_fold.Age.median()
     val_fold.loc[val_fold.Embarked.isna(), 'Embarked'] = trn_fold.Embarked.mode().values[0]
     
-    trn_fold = pd.get_dummies(trn_fold, drop_first=True)
-    val_fold = pd.get_dummies(val_fold, drop_first=True)
+    trn_fold = pd.get_dummies(trn_fold)
+    val_fold = pd.get_dummies(val_fold)
 
     return trn_fold, val_fold
 
