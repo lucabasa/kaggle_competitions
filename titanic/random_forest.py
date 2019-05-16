@@ -39,6 +39,17 @@ def tune_rf(train, target, verbose=False):
     return grid.best_params_
 
 
+def clean_cols(data, col_list):
+    df = data.copy()
+    for col in col_list:
+        try:
+            del df[col]
+        except KeyError:
+            pass
+
+    return df
+
+
 def general_processing(train, test):
     # processing train and test outside the cv loop
     train['Sex'] = train.Sex.map({'male': 1, 'female': 0}).astype(int)
@@ -59,17 +70,29 @@ def general_processing(train, test):
     train['FamSize'] = train['SibSp'] + train['Parch'] + 1
     test['FamSize'] = test['SibSp'] + test['Parch'] + 1
 
-    del train['Survived']
-    del train['Name']
-    del train['Ticket']
-    del train['PassengerId']
-    del train['Cabin']
+    # Gender and class
+    train.loc[(train.Sex == 1) & (train.Pclass == 1), 'se_cl'] = 'male_1'
+    train.loc[(train.Sex == 1) & (train.Pclass == 2), 'se_cl'] = 'male_2'
+    train.loc[(train.Sex == 1) & (train.Pclass == 3), 'se_cl'] = 'male_3'
+    train.loc[(train.Sex == 0) & (train.Pclass == 1), 'se_cl'] = 'female_1'
+    train.loc[(train.Sex == 0) & (train.Pclass == 2), 'se_cl'] = 'female_2'
+    train.loc[(train.Sex == 0) & (train.Pclass == 3), 'se_cl'] = 'female_3'
+    test.loc[(test.Sex == 1) & (test.Pclass == 1), 'se_cl'] = 'male_1'
+    test.loc[(test.Sex == 1) & (test.Pclass == 2), 'se_cl'] = 'male_2'
+    test.loc[(test.Sex == 1) & (test.Pclass == 3), 'se_cl'] = 'male_3'
+    test.loc[(test.Sex == 0) & (test.Pclass == 1), 'se_cl'] = 'female_1'
+    test.loc[(test.Sex == 0) & (test.Pclass == 2), 'se_cl'] = 'female_2'
+    test.loc[(test.Sex == 0) & (test.Pclass == 3), 'se_cl'] = 'female_3'
 
-    del test['PassengerId']
-    del test['Name']
-    del test['Ticket']
-    del test['Cabin']
-
+    # FamSize and Class
+    train['fs_cl'] = train.FamSize * train.Pclass
+    test['fs_cl'] = test.FamSize * test.Pclass
+    
+    to_drop = ['Survived', 'Name', 'Ticket', 'PassengerId', 'Cabin']
+    
+    train = clean_cols(train, to_drop)
+    test = clean_cols(test, to_drop)
+    
     return train, test
 
 
