@@ -47,17 +47,26 @@ def general_processing(train, test):
     test = pr.flag_missing(test, ['Age', 'Cabin'])
 
     # fam size
-    train['FamSize'] = train['SibSp'] + train['Parch'] + 1
-    test['FamSize'] = test['SibSp'] + test['Parch'] + 1
+    train['fam_size'] = train['SibSp'] + train['Parch'] + 1
+    test['fam_size'] = test['SibSp'] + test['Parch'] + 1
 
     # Gender and class
     train = pr.gen_clas(train)
     test = pr.gen_clas(test)
 
     # FamSize and Class
-    train['fs_cl'] = train.FamSize * train.Pclass
-    test['fs_cl'] = test.FamSize * test.Pclass
+    train['fs_cl'] = train.fam_size * train.Pclass
+    test['fs_cl'] = test.fam_size * test.Pclass
 
+    # isAlone  # todo: disabled temporarily
+    # train['is_alone'] = 0
+    # train.loc[train.FamSize==1, 'is_alone'] = 1
+    # test['is_alone'] = 0
+    # test.loc[test.FamSize==1, 'is_alone'] = 1
+
+    # Missing cabin and gender
+    train = pr.gen_cab(train)
+    test = pr.gen_cab(test)
 
     # cleaning up unused columns
     to_drop = ['Survived', 'Name', 'Ticket', 'PassengerId', 'Cabin']
@@ -72,6 +81,8 @@ def impute_test(train, test):
     test.loc[test.Age.isna(), 'Age'] = train.Age.median()
     test.loc[test.Fare.isna(), 'Fare'] = train.Fare.median()
 
+    test = pd.get_dummies(test, drop_first=True)
+
     return test
 
 
@@ -83,8 +94,8 @@ def process_fold(trn_fold, val_fold):
     val_fold.loc[val_fold.Age.isna(), 'Age'] = trn_fold.Age.median()
     val_fold.loc[val_fold.Embarked.isna(), 'Embarked'] = trn_fold.Embarked.mode().values[0]
     
-    trn_fold = pd.get_dummies(trn_fold)
-    val_fold = pd.get_dummies(val_fold)
+    trn_fold = pd.get_dummies(trn_fold, drop_first=True)
+    val_fold = pd.get_dummies(val_fold, drop_first=True)
 
     return trn_fold, val_fold
 
@@ -106,8 +117,6 @@ def train_rf(df_train, df_test, kfolds):
     feature_importance_df = pd.DataFrame()
 
     test = impute_test(train, test)
-
-    test = pd.get_dummies(test)
 
     for fold_, (trn_idx, val_idx) in enumerate(kfolds.split(train.values, target.values)):
         print("fold n°{}".format(fold_))
