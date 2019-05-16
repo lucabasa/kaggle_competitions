@@ -1,19 +1,17 @@
 __author__ = 'lucabasa'
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 __status__ = 'development'
 
 
 import numpy as np
 import pandas as pd 
 
-import seaborn as sns
-import matplotlib.pyplot as plt
-
 from sklearn.model_selection import KFold, RandomizedSearchCV
-
 from sklearn.metrics import accuracy_score, roc_auc_score, f1_score, classification_report
-
 from sklearn.ensemble import RandomForestClassifier
+
+import processing as pr
+import report as rep
 
 
 def tune_rf(train, target, verbose=False):
@@ -25,7 +23,7 @@ def tune_rf(train, target, verbose=False):
     kfolds = KFold(5, shuffle=True, random_state=14)
 
     grid = RandomizedSearchCV(RandomForestClassifier(n_estimators=300, n_jobs=4, random_state=345),
-                            param_distributions=grid_param, n_iter=50, cv=kfolds, 
+                            param_distributions=grid_param, n_iter=200, cv=kfolds, 
                             random_state=654, n_jobs=-1, scoring='roc_auc')
 
     grid.fit(train, target)
@@ -39,59 +37,32 @@ def tune_rf(train, target, verbose=False):
     return grid.best_params_
 
 
-def clean_cols(data, col_list):
-    df = data.copy()
-    for col in col_list:
-        try:
-            del df[col]
-        except KeyError:
-            pass
-
-    return df
-
-
 def general_processing(train, test):
     # processing train and test outside the cv loop
     train['Sex'] = train.Sex.map({'male': 1, 'female': 0}).astype(int)
     test['Sex'] = test.Sex.map({'male': 1, 'female': 0}).astype(int)
 
     # flagging missing data
-    train['MisAge'] = 0
-    train.loc[train.Age.isna(), 'MisAge'] = 1
-    train['MisCab'] = 0
-    train.loc[train.Cabin.isna(), 'MisCab'] = 1
-
-    test['MisAge'] = 0
-    test.loc[test.Age.isna(), 'MisAge'] = 1
-    test['MisCab'] = 0
-    test.loc[test.Cabin.isna(), 'MisCab'] = 1
+    train = pr.flag_missing(train, ['Age', 'Cabin'])
+    test = pr.flag_missing(test, ['Age', 'Cabin'])
 
     # fam size
     train['FamSize'] = train['SibSp'] + train['Parch'] + 1
     test['FamSize'] = test['SibSp'] + test['Parch'] + 1
 
     # Gender and class
-    train.loc[(train.Sex == 1) & (train.Pclass == 1), 'se_cl'] = 'male_1'
-    train.loc[(train.Sex == 1) & (train.Pclass == 2), 'se_cl'] = 'male_2'
-    train.loc[(train.Sex == 1) & (train.Pclass == 3), 'se_cl'] = 'male_3'
-    train.loc[(train.Sex == 0) & (train.Pclass == 1), 'se_cl'] = 'female_1'
-    train.loc[(train.Sex == 0) & (train.Pclass == 2), 'se_cl'] = 'female_2'
-    train.loc[(train.Sex == 0) & (train.Pclass == 3), 'se_cl'] = 'female_3'
-    test.loc[(test.Sex == 1) & (test.Pclass == 1), 'se_cl'] = 'male_1'
-    test.loc[(test.Sex == 1) & (test.Pclass == 2), 'se_cl'] = 'male_2'
-    test.loc[(test.Sex == 1) & (test.Pclass == 3), 'se_cl'] = 'male_3'
-    test.loc[(test.Sex == 0) & (test.Pclass == 1), 'se_cl'] = 'female_1'
-    test.loc[(test.Sex == 0) & (test.Pclass == 2), 'se_cl'] = 'female_2'
-    test.loc[(test.Sex == 0) & (test.Pclass == 3), 'se_cl'] = 'female_3'
+    train = pr.gen_clas(train)
+    test = pr.gen_clas(test)
 
     # FamSize and Class
     train['fs_cl'] = train.FamSize * train.Pclass
     test['fs_cl'] = test.FamSize * test.Pclass
-    
+
+
+    # cleaning up unused columns
     to_drop = ['Survived', 'Name', 'Ticket', 'PassengerId', 'Cabin']
-    
-    train = clean_cols(train, to_drop)
-    test = clean_cols(test, to_drop)
+    train = pr.clean_cols(train, to_drop)
+    test = pr.clean_cols(test, to_drop)
     
     return train, test
 
@@ -116,38 +87,6 @@ def process_fold(trn_fold, val_fold):
     val_fold = pd.get_dummies(val_fold)
 
     return trn_fold, val_fold
-
-
-def plot_importance(feature_importance_df, save_name):
-    cols = (feature_importance_df[["feature", "importance"]]
-                    .groupby("feature")
-                    .mean().abs()
-                    .sort_values(by="importance", ascending=False)[:50].index)
-
-    best_features = feature_importance_df.loc[feature_importance_df.feature.isin(cols)]
-
-    plt.figure(figsize=(15,8))
-
-    sns.barplot(x="importance",
-                y="feature",
-                data=best_features.sort_values(by="importance",
-                                               ascending=False))
-
-    if not save_name.endswith('.png'):
-        save_name += '.png'
-    plt.savefig('plots/' + save_name)
-    plt.close()
-
-
-def report_oof(df_train, oof):
-    acc = accuracy_score(oof, df_train.Survived)
-    f1 = f1_score(oof, df_train.Survived)
-    roc = roc_auc_score(oof, df_train.Survived)
-    print(f'Oof accuracy: \t {acc}')
-    print(f'Oof f1 score: \t {f1}')
-    print(f'Oof area under the roc curve: \t {roc}')
-    print('Classification report: ')
-    print(classification_report(oof, df_train.Survived))
 
 
 def train_rf(df_train, df_test, kfolds):
@@ -199,14 +138,13 @@ def train_rf(df_train, df_test, kfolds):
         fold_importance_df["fold"] = fold_ + 1
         feature_importance_df = pd.concat([feature_importance_df, fold_importance_df], axis=0)
 
-    report_oof(df_train, oof)
+    rep.report_oof(df_train, oof)
 
-    plot_importance(feature_importance_df, 'rf_fe_featimp')
+    rep.plot_importance(feature_importance_df, 'rf_fe_featimp')
 
     sub['Survived'] = (predictions > 0.5).astype(int) 
 
     sub.to_csv('submissions/rf_feat_eng.csv', index=False)
-
 
 
 def main():
