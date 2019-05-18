@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.1.1'
+__version__ = '1.1.2'
 __status__ = 'development'
 
 
@@ -149,7 +149,7 @@ def train_rf(df_train, df_test, kfolds):
 
         clf = forest.fit(trn_data, trn_target)
 
-        oof[val_idx] = clf.predict(val_data)
+        oof[val_idx] = clf.predict_proba(val_data)[:,1]
         predictions += clf.predict_proba(test)[:,1] / kfolds.n_splits
 
         fold_importance_df = pd.DataFrame()
@@ -158,13 +158,18 @@ def train_rf(df_train, df_test, kfolds):
         fold_importance_df["fold"] = fold_ + 1
         feature_importance_df = pd.concat([feature_importance_df, fold_importance_df], axis=0)
 
-    rep.report_oof(df_train, oof)
+    rep.report_oof(df_train, (oof > 0.5).astype(int))
 
     rep.plot_importance(feature_importance_df, 'rf_fe_featimp')
 
     sub['Survived'] = (predictions > 0.5).astype(int) 
 
     sub.to_csv('submissions/rf_feat_eng.csv', index=False)
+
+    rf_oof = df_train.copy()
+    rf_oof['oof'] = oof
+    rf_oof.to_csv('oof_pred/random_forest.csv', index=False)
+    sub.to_csv('oof_pred/random_forest_test.csv', index=False)
 
 
 def main():

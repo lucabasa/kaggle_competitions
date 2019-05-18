@@ -2,5 +2,6 @@ data/*
 submissions/*
 plots/*
 __pycache__/*
+oof_pred/*
 
 .ipynb_checkpoints/
