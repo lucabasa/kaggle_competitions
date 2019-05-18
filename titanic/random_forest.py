@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.1.0'
+__version__ = '1.1.1'
 __status__ = 'development'
 
 
@@ -60,9 +60,15 @@ def general_processing(train, test):
 
     # isAlone  
     train['is_alone'] = 0
-    train.loc[train.FamSize==1, 'is_alone'] = 1
+    train.loc[train.fam_size==1, 'is_alone'] = 1
     test['is_alone'] = 0
-    test.loc[test.FamSize==1, 'is_alone'] = 1
+    test.loc[test.fam_size==1, 'is_alone'] = 1
+
+    #big families
+    train['big_fam'] = 0
+    train.loc[train.fam_size > 5, 'big_fam'] = 1
+    test['big_fam'] = 0
+    test.loc[test.fam_size > 5, 'big_fam'] = 1
 
     # Missing cabin and gender
     train = pr.gen_cab(train)
@@ -81,6 +87,8 @@ def impute_test(train, test):
     test.loc[test.Age.isna(), 'Age'] = train.Age.median()
     test.loc[test.Fare.isna(), 'Fare'] = train.Fare.median()
 
+    test = pr.baby(test)
+
     test = pd.get_dummies(test)
 
     return test
@@ -93,6 +101,9 @@ def process_fold(trn_fold, val_fold):
     
     val_fold.loc[val_fold.Age.isna(), 'Age'] = trn_fold.Age.median()
     val_fold.loc[val_fold.Embarked.isna(), 'Embarked'] = trn_fold.Embarked.mode().values[0]
+
+    trn_fold = pr.baby(trn_fold)
+    val_fold = pr.baby(val_fold)
     
     trn_fold = pd.get_dummies(trn_fold)
     val_fold = pd.get_dummies(val_fold)
