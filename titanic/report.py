@@ -12,19 +12,19 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score, roc_auc_score, f1_score, classification_report
 
 
-def plot_importance(feature_importance_df, save_name):
-    cols = (feature_importance_df[["feature", "importance"]]
+def plot_importance(feature_importance_df, save_name, imp_name='importance'):
+    cols = (feature_importance_df[["feature", imp_name]]
                     .groupby("feature")
                     .mean().abs()
-                    .sort_values(by="importance", ascending=False)[:50].index)
+                    .sort_values(by=imp_name, ascending=False)[:50].index)
 
     best_features = feature_importance_df.loc[feature_importance_df.feature.isin(cols)]
 
     plt.figure(figsize=(15,8))
 
-    sns.barplot(x="importance",
+    sns.barplot(x=imp_name,
                 y="feature",
-                data=best_features.sort_values(by="importance",
+                data=best_features.sort_values(by=imp_name,
                                                ascending=False))
 
     if not save_name.endswith('.png'):

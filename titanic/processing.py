@@ -58,3 +58,12 @@ def baby(data):
     df.loc[df.Age < 10, 'is_baby'] = 1
 
     return df
+
+def young(data):
+    df = data.copy()
+
+    df['is_young'] = 0
+    df.loc[(df.Age > 9) & (df.Age < 20), 'is_young'] = 1
+
+    return df
+
