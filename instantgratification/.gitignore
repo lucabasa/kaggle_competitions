@@ -1,0 +1,6 @@
+data/
+oof_preds/
+plots/
+__pycache__/
+submissions/
+.pynb_checkpoints/
