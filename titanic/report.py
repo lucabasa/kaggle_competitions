@@ -42,4 +42,21 @@ def report_oof(df_train, oof):
     print(f'Oof area under the roc curve: \t {roc}')
     print('Classification report: ')
     print(classification_report(oof, df_train.Survived))
+
+
+def plot_predictions(data, oof, save_name, x='Age', y='oof', hue='Survived', size=None):
+    df = data.copy()
+    df['oof'] = oof
+
+    plt.figure(figsize=(12,8))
+    ax = sns.scatterplot(x=x, y=y, size=size,
+                         hue=hue, data=df, alpha=0.7)
+    ax.axhline(0.5, color='r', linestyle='--')
+
+    if not save_name.endswith('.png'):
+        save_name += '.png'
+    plt.savefig('plots/' + save_name)
+    plt.close()
+
+
     
