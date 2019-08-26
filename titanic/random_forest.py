@@ -38,41 +38,8 @@ def tune_rf(train, target, verbose=False):
 
 def general_processing(train, test):
     # processing train and test outside the cv loop
-    train['Sex'] = train.Sex.map({'male': 1, 'female': 0}).astype(int)
-    test['Sex'] = test.Sex.map({'male': 1, 'female': 0}).astype(int)
-
-    # flagging missing data
-    train = pr.flag_missing(train, ['Age', 'Cabin'])
-    test = pr.flag_missing(test, ['Age', 'Cabin'])
-
-    # fam size
-    train['fam_size'] = train['SibSp'] + train['Parch'] + 1
-    test['fam_size'] = test['SibSp'] + test['Parch'] + 1
-
-    # Gender and class
-    train = pr.gen_clas(train)
-    test = pr.gen_clas(test)
-
-    # FamSize and Class
-    train['fs_cl'] = train.fam_size * train.Pclass
-    test['fs_cl'] = test.fam_size * test.Pclass
-
-    # isAlone  
-    train['is_alone'] = 0
-    train.loc[train.fam_size==1, 'is_alone'] = 1
-    test['is_alone'] = 0
-    test.loc[test.fam_size==1, 'is_alone'] = 1
-
-    #big families
-    train['big_fam'] = 0
-    train.loc[train.fam_size > 5, 'big_fam'] = 1
-    test['big_fam'] = 0
-    test.loc[test.fam_size > 5, 'big_fam'] = 1
-
-    # Missing cabin and gender
-    train = pr.gen_cab(train)
-    test = pr.gen_cab(test)
-
+    train, test = pr.general_processing(train, test)
+    
     # cleaning up unused columns
     to_drop = ['Survived', 'Name', 'Ticket', 'PassengerId', 'Cabin']
     train = pr.clean_cols(train, to_drop)
