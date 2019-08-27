@@ -4,3 +4,4 @@ submissions/*
 plots/*
 __pycache__/*
 oof_pred/*
+Notebooks/.ipynb_checkpoints/*
