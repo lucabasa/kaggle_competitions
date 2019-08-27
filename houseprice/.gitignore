@@ -1,1 +1,6 @@
-data/
+data/*
+.ipynb_checkpoints/*
+submissions/*
+plots/*
+__pycache__/*
+oof_pred/*
