@@ -52,23 +52,23 @@ def plot_bivariate(data, x, y, hue=None, **kwargs):
         plt.title(f'{x} vs {y}', fontsize=18)
 
 
-def corr_target(data, target, arg):
-    print(data[[f for f in arg]+[target]].corr())
-    num = len(arg)
+def corr_target(data, target, cols, x_estimator=None):
+    print(data[cols+[target]].corr())
+    num = len(cols)
     rows = int(num/2) + (num % 2 > 0)
-    arg = list(arg)
+    cols = list(cols)
     y = data[target]
     fig, ax = plt.subplots(rows, 2, figsize=(12, 5 * (rows)))
     i = 0
     j = 0
-    for feat in arg:
+    for feat in cols:
         x = data[feat]
         if (rows > 1):
-            sns.regplot(x=x, y=y, ax=ax[i][j])
+            sns.regplot(x=x, y=y, ax=ax[i][j], x_estimator=x_estimator)
             j = (j+1)%2
             i = i + 1 - j
         else:
-            sns.regplot(x=x, y=y, ax=ax[i])
+            sns.regplot(x=x, y=y, ax=ax[i], x_estimator=x_estimator)
             i = i+1
 
 def find_cats(data, target, thrs=0.1, agg_func='mean', frac=1):
