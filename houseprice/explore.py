@@ -6,6 +6,8 @@ __status__ = 'development'
 import pandas as pd
 import numpy as np
 
+from scipy import stats
+
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -71,16 +73,35 @@ def corr_target(data, target, cols, x_estimator=None):
             sns.regplot(x=x, y=y, ax=ax[i], x_estimator=x_estimator)
             i = i+1
 
-def find_cats(data, target, thrs=0.1, agg_func='mean', frac=1):
+def ks_test(data, col, target, critical=0.05):
+    df = pd.get_dummies(data[[col]+[target]], columns=[col])
+    
+    for col in df.columns:
+        if col == target:
+            continue
+        tmp_1 = df[df[col] == 1][target]
+        tmp_2 = df[df[col] == 0][target]
+        ks, p = stats.ks_2samp(tmp_1, tmp_2)
+        if p < critical:
+            return True
+    return False
+    
+
+def find_cats(data, target, thrs=0.1, agg_func='mean', critical=0.05, ks=True, frac=1):
     cats = []
     tar_std = data[target].std()
     for col in data.select_dtypes(include=['object']).columns:
         counts = data[col].value_counts(dropna=False, 
                                         normalize=True)
-        tmp = data.loc[data[col].isin(counts[counts > thrs].index), 
-                       :].groupby(col)[target].agg(agg_func).std()
-        if tmp >= tar_std*frac:
-            cats.append(col)
+        tmp = data.loc[data[col].isin(counts[counts > thrs].index),:]
+        if ks:
+            res = ks_test(tmp, col, target, critical=critical)
+            if res:
+                cats.append(col)
+        else:
+            res = tmp.groupby(col)[target].agg(agg_func).std()
+            if res >= tar_std*frac:
+                cats.append(col)    
     return cats
 
 
