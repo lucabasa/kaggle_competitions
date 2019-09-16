@@ -24,6 +24,11 @@ def list_missing(data, verbose=True):
 
 
 def plot_correlations(data, target=None, limit=50, figsize=(12,10), **kwargs):
+    '''
+    This function  plots the correlation matrix of a dataframe
+    If a target feature is provided, it will display only a certain amount of features, the ones correlated the most
+    with the target. The number of features displayed is controlled by the parameter limit
+    '''
     corr = data.corr()
     if target:
         cor_target = abs(corr[target]).sort_values(ascending=False)
@@ -36,6 +41,10 @@ def plot_correlations(data, target=None, limit=50, figsize=(12,10), **kwargs):
 
 
 def plot_distribution(data, column, bins=50, correlation=None):
+    '''
+    Plots a histogram of a given column
+    If a Pandas Series is provided with the correlation values, it will be displayed in the title.
+    '''
     plt.figure(figsize=(12,8))
     data[column].hist(bins=bins)
     if not correlation is None:
@@ -46,6 +55,9 @@ def plot_distribution(data, column, bins=50, correlation=None):
 
 
 def plot_bivariate(data, x, y, hue=None, **kwargs):
+    '''
+    Scatterplot of the feature x vs the feature y with the possibility of adding a hue
+    '''
     plt.figure(figsize=(12,8))
     sns.scatterplot(data=data, x=x, y=y, hue=hue, **kwargs)
     if hue:
@@ -55,6 +67,11 @@ def plot_bivariate(data, x, y, hue=None, **kwargs):
 
 
 def corr_target(data, target, cols, x_estimator=None):
+    '''
+    Scatterplot + linear regression of a list of columns against the target.
+    A correlation matrix is also printed.
+    It is possible to pass an estimator.
+    '''
     print(data[cols+[target]].corr())
     num = len(cols)
     rows = int(num/2) + (num % 2 > 0)
@@ -74,6 +91,11 @@ def corr_target(data, target, cols, x_estimator=None):
             i = i+1
 
 def ks_test(data, col, target, critical=0.05):
+    '''
+    It takes a categorical feature and makes dummies.
+    For each dummy, it performs a Kolmogorov-Smirnov test between the distribution of the target 
+    of that subset vs the rest of the population.
+    ''' 
     df = pd.get_dummies(data[[col]+[target]], columns=[col])
     
     for col in df.columns:
@@ -88,6 +110,11 @@ def ks_test(data, col, target, critical=0.05):
     
 
 def find_cats(data, target, thrs=0.1, agg_func='mean', critical=0.05, ks=True, frac=1):
+    '''
+    Finds interesting categorical features either by perfoming a Kolmogorov-Smirnov test or 
+    simply be comparing the descriptive statistic of the full population versus the one obtained with the
+    various subsets.
+    '''
     cats = []
     tar_std = data[target].std()
     for col in data.select_dtypes(include=['object']).columns:
@@ -106,6 +133,10 @@ def find_cats(data, target, thrs=0.1, agg_func='mean', critical=0.05, ks=True, f
 
 
 def segm_target(data, cat, target):
+    '''
+    Studies the target segmented by a categorical feature.
+    It plots both a boxplot and a distplot for visual support
+    '''
     df = data.groupby(cat)[target].agg(['count', 'mean', 'max', 
                                         'min', 'median', 'std'])
     fig, ax = plt.subplots(1,2, figsize=(12, 5))
