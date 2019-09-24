@@ -42,7 +42,7 @@ class recode_cat(BaseEstimator, TransformerMixin):
     
     
     def tr_GrgType(self, data):
-        data['GrgType'] = data['GarageType'].map({'Basment': 'Attchd',
+        data['GarageType'] = data['GarageType'].map({'Basment': 'Attchd',
                                                   'CarPort': 'Detchd', 
                                                   '2Types': 'Attchd' }).fillna(data['GarageType'])
         return data
@@ -126,4 +126,3 @@ class dummify(TransformerMixin):
     def transform(self, X):
         X = pd.get_dummies(X, drop_first=self.drop_first)
         return X
-        
