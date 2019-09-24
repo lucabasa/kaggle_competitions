@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 __status__ = 'development'
 
 
@@ -83,24 +83,3 @@ class df_scaler(TransformerMixin):
         return Xscaled
 
     
-class make_ordinal(BaseEstimator, TransformerMixin):
-	'''
-	Transforms ordinal features in order to have them as numeric (preserving the order)
-	If unsure about converting or not a feature (maybe making dummies is better), make use of
-	extra_cols and unsure_conversion
-	'''
-    def __init__(self, cols, extra_cols=None, unsure_conversion=True):
-        self._unsure_conversion = unsure_conversion
-        self.cols = cols
-        self.extra_cols = extra_cols
-        self.mapping = {'Po':1, 'Fa': 2, 'TA': 3, 'Gd': 4, 'Ex': 5}
-    
-    def fit(self, X, y=None):
-        return self
-    
-    def transform(self, X, y=None):
-        if self.extra_cols and self.unsure_conversion:
-            self.cols += self.extra_cols
-        for col in self.cols:
-            X.loc[:, col] = X[col].map(self.mapping).fillna(0)
-        return X

@@ -50,7 +50,7 @@ def plot_predictions(train, test, true_label, pred_label, hue=None, legend=False
     ax[0] = plot_diagonal(ax[0])
     ax[1] = plot_diagonal(ax[1])
 
-    if not save_name.endswith('.png'):
-        save_name += '.png'
-    plt.savefig('plots/' + save_name)
+    if not savename.endswith('.png'):
+        savename += '.png'
+    plt.savefig('plots/' + savename)
     plt.close()
