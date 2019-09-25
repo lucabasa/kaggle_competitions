@@ -96,9 +96,15 @@ class df_scaler(TransformerMixin):
     transformer_list: list of Pipelines
 
     '''
-    def __init__(self, transformer_list):
+    def __init__(self, transformer_list, n_jobs=None, transformer_weights=None, verbose=False):
         self.transformer_list = transformer_list
-        self.feat_un = FeatureUnion(self.transformer_list)
+        self.n_jobs = n_jobs
+        self.transformer_weights = transformer_weights
+        self.verbose = verbose  # these are necessary to work inside of GridSearch or similar
+        self.feat_un = FeatureUnion(self.transformer_list, 
+                                    self.n_jobs, 
+                                    self.transformer_weights, 
+                                    self.verbose)
         
     def fit(self, X, y=None):
         self.feat_un.fit(X)
