@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.0.0'
+__version__ = '1.0.1'
 __status__ = 'development'
 
 
@@ -119,10 +119,15 @@ class dummify(TransformerMixin):
     '''
     def __init__(self, drop_first=False):
         self.drop_first = drop_first
+        self.columns = []  # useful to well behave with FeatureUnion
 
     def fit(self, X, y=None):
         return self
     
     def transform(self, X):
         X = pd.get_dummies(X, drop_first=self.drop_first)
+        self.columns = X.columns
         return X
+    
+    def get_features_name(self):
+        return self.columns

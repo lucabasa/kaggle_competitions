@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 __status__ = 'development'
 
 
@@ -9,19 +9,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from sklearn.metrics import mean_squared_error, mean_squared_log_error, mean_absolute_error
+from sklearn.metrics import mean_squared_error, mean_absolute_error
 
 
-def print_scores(train, test, inf, oof, target):
-    print(f'Train set RMSE: {mean_squared_error(train[target], inf)}')
-    print(f'Test set RMSE: {mean_squared_error(test[target], oof)}')
-    print(f'Train set logRMSE: {mean_squared_log_error(train[target], inf)}')
-    print(f'Test set logRMSE: {mean_squared_log_error(test[target], oof)}')
-    print(f'Train set MAE: {mean_absolute_error(train[target], inf)}')
-    print(f'Test set MAE: {mean_absolute_error(test[target], oof)}')
-    
-
-def plot_diagonal(ax):
+def _plot_diagonal(ax):
     xmin, xmax = ax.get_xlim()
     ymin, ymax = ax.get_ylim()
     low = min(xmin, xmax)
@@ -35,22 +26,45 @@ def plot_diagonal(ax):
     return ax
 
     
-def plot_predictions(train, test, true_label, pred_label, hue=None, legend=False, savename='test.png'):
+def plot_predictions(data, true_label, pred_label, hue=None, legend=False, savename='test.png'):
     
-    fig, ax = plt.subplots(1,2, figsize=(15,6))
+    tmp = data.copy()
+    tmp['Prediction'] = pred_label
+    tmp['True Label'] = true_label
 
-    sns.scatterplot(x=true_label, y=pred_label, data=train, 
-                    hue=hue, ax=ax[0], legend=legend, alpha=0.7)
-    sns.scatterplot(x=true_label, y=pred_label, data=test, 
-                    hue=hue, ax=ax[1], legend=legend, alpha=0.7)
-    
-    ax[0].set_title('In fold prediction')
-    ax[1].set_title('Oof prediction')
-    
-    ax[0] = plot_diagonal(ax[0])
-    ax[1] = plot_diagonal(ax[1])
+    plt.figure(figsize=(15,6))
 
+    ax = sns.scatterplot(x='True Label', y='Prediction', data=tmp, 
+                         hue=hue, legend=legend, alpha=0.7)
+    ax = _plot_diagonal(ax)
+    
     if not savename.endswith('.png'):
         savename += '.png'
     plt.savefig('plots/' + savename)
     plt.close()
+
+
+def get_coef(pipe):
+    '''
+    Get dataframe with coefficients of a model in Pipeline
+    The step before the model has to have a get_feature_name method
+    '''
+    imp = pipe.steps[-1][1].coef_.tolist()
+    feats = pipe.steps[-2][1].get_feature_names()
+
+    result = pd.DataFrame({'feat':feats,'score':imp})
+    result = result.sort_values(by=['score'],ascending=False)
+
+    return result
+
+
+def evaluate(y_true, y_pred, data, hue=None, legend=False, savename='test.png'):
+
+    print(f'RMSE: {round(mean_squared_error(y_true, y_pred), 4)}')
+    print(f'MAE: {round(mean_absolute_error(np.expm1(y_true), np.expm1(y_pred)), 4)}')
+
+    plot_predictions(data, y_true, y_pred, hue, legend, savename)
+
+
+
+
