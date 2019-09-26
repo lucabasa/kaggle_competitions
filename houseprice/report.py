@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.1.0'
+__version__ = '1.2.0'
 __status__ = 'development'
 
 
@@ -38,6 +38,7 @@ def get_coef(pipe):
     result = result.sort_values(by=['score'],ascending=False)
 
     return result
+
 
 def get_feature_importance(pipe):
     '''

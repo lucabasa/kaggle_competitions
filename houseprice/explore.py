@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 __status__ = 'development'
 
 
@@ -31,8 +31,10 @@ def plot_correlations(data, target=None, limit=50, figsize=(12,10), **kwargs):
     '''
     corr = data.corr()
     if target:
-        cor_target = abs(corr[target]).sort_values(ascending=False)
+        corr['abs'] = abs(corr['Target'])
+        cor_target = corr.sort_values(by='abs', ascending=False)[target]
         cor_target = cor_target[:limit]
+        del corr['abs']
         corr = corr.loc[cor_target.index, cor_target.index]
     plt.figure(figsize=figsize)
     ax = sns.heatmap(corr, cmap='RdBu_r', **kwargs)
