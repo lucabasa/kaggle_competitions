@@ -15,18 +15,22 @@ class make_ordinal(BaseEstimator, TransformerMixin):
     If unsure about converting or not a feature (maybe making dummies is better), make use of
     extra_cols and unsure_conversion
     '''
-    def __init__(self, cols, extra_cols=None, unsure_conversion=True):
-        self._unsure_conversion = unsure_conversion
+    def __init__(self, cols, extra_cols=None):
         self.cols = cols
         self.extra_cols = extra_cols
         self.mapping = {'Po':1, 'Fa': 2, 'TA': 3, 'Gd': 4, 'Ex': 5}
     
+
     def fit(self, X, y=None):
         return self
     
+
     def transform(self, X, y=None):
-        if self.extra_cols and self.unsure_conversion:
+        if self.extra_cols:
             self.cols += self.extra_cols
+        else:
+            for col in self.extra_cols:
+                del X[col]    
         for col in self.cols:
             X.loc[:, col] = X[col].map(self.mapping).fillna(0)
         return X
@@ -98,6 +102,14 @@ class recode_cat(BaseEstimator, TransformerMixin):
     def tr_MasVnrType(self, data):
         data['MasVnrType'] = data['MasVnrType'].map({'BrkCmn': 'BrkFace'}).fillna(data['MasVnrType'])
         return data
+
+
+    def tr_HouseStyle(data):
+        data['HouseStyle'] = data['HouseStyle'].map({'1.5Fin': '1.5Unf', 
+                                                         '2.5Fin': '2Story', 
+                                                         '2.5Unf': '2Story', 
+                                                         'SLvl': 'SFoyer'}).fillna(data['HouseStyle'])
+    return data
     
     
     def transform(self, X, y=None):
@@ -110,6 +122,7 @@ class recode_cat(BaseEstimator, TransformerMixin):
         X = self.tr_LandCont(X)
         X = self.tr_BldgType(X)
         X = self.tr_MasVnrType(X)
+        X = self.tr_HouseStyle(X)
         return X
     
     
