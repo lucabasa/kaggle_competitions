@@ -107,12 +107,12 @@ class recode_cat(BaseEstimator, TransformerMixin):
         return data
 
 
-    def tr_HouseStyle(data):
+    def tr_HouseStyle(self, data):
         data['HouseStyle'] = data['HouseStyle'].map({'1.5Fin': '1.5Unf', 
                                                          '2.5Fin': '2Story', 
                                                          '2.5Unf': '2Story', 
                                                          'SLvl': 'SFoyer'}).fillna(data['HouseStyle'])
-    return data
+        return data
     
     
     def transform(self, X, y=None):

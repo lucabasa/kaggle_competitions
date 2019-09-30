@@ -46,7 +46,7 @@ def get_feature_importance(pipe):
     The step before the model has to have a get_feature_name method
     '''
     imp = pipe.steps[-1][1].feature_importances_.tolist() 
-    feats = ipe.steps[-2][1].get_feature_names()
+    feats = pipe.steps[-2][1].get_feature_names()
     result = pd.DataFrame({'feat':feats,'score':imp})
     result = result.sort_values(by=['score'],ascending=False)
     return result
@@ -97,7 +97,7 @@ def plot_predictions(data, true_label, pred_label, feature=None, hue=None, legen
 
 
 
-def evaluate(y_true, y_pred, data, pipe, feat='coef', hue=None, legend=False, savename='test.png'):
+def evaluate(data, y_true, y_pred, pipe, feat='coef', hue=None, legend=False, savename='test.png'):
     print(f'RMSE: {round(np.sqrt(mean_squared_error(y_true, y_pred)), 4)}')
     print(f'MAE: {round(mean_absolute_error(np.expm1(y_true), np.expm1(y_pred)), 4)}')
     

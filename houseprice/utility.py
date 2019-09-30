@@ -19,3 +19,22 @@ def make_test(train, test_size, random_state, strat_feat=None):
             test_set = train.loc[test_index]
             
     return train_set, test_set
+
+
+def cv_score(df_train, y_train, kfolds, pipeline):
+    oof = np.zeros(len(df_train))
+    train = df_train.copy()
+    
+    for train_index, test_index in kfolds.split(train.values):
+            
+        trn_data = train.iloc[train_index][:]
+        val_data = train.iloc[test_index][:]
+        
+        trn_target = y_train.iloc[train_index].values.ravel()
+        val_target = y_train.iloc[test_index].values.ravel()
+        
+        pipeline.fit(trn_data, trn_target)
+
+        oof[test_index] = pipeline.predict(val_data).ravel()
+            
+    return oof
