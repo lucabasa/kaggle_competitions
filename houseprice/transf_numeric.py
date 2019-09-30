@@ -10,12 +10,13 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 
 class tr_numeric(BaseEstimator, TransformerMixin):
-    def __init__(self, SF_room=True, bedroom=True, bath=True, lot=True):
+    def __init__(self, SF_room=True, bedroom=True, bath=True, lot=True, service=True):
         self.columns = []  # useful to well behave with FeatureUnion
         self.SF_room = SF_room
         self.bedroom = bedroom
         self.bath = bath
         self.lot = lot
+        self.service = service
      
 
     def fit(self, X, y=None):
@@ -72,8 +73,8 @@ class tr_numeric(BaseEstimator, TransformerMixin):
 
         X = self.SF_per_room(X)
         X = self.bedroom_prop(X)
-        X = self.bath(X)
-        X = self.lot(X)
+        X = self.total_bath(X)
+        X = self.lot_prop(X)
         X = self.service_area(X)
 
         self.columns = X.columns

@@ -87,8 +87,28 @@ class df_scaler(TransformerMixin):
     def get_feature_names(self):
         return list(self.columns)
 
+
+class dummify(TransformerMixin):
+    '''
+    Wrapper for get dummies
+    '''
+    def __init__(self, drop_first=False):
+        self.drop_first = drop_first
+        self.columns = []  # useful to well behave with FeatureUnion
+
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X):
+        X = pd.get_dummies(X, drop_first=self.drop_first)
+        self.columns = X.columns
+        return X
+    
+    def get_features_name(self):
+        return self.columns
+
  
- class FeatureUnion_df(TransformerMixin, BaseEstimator):
+class FeatureUnion_df(TransformerMixin, BaseEstimator):
     '''
     Wrapper of FeatureUnion but returning a Dataframe, 
     the column order follows the concatenation done by FeatureUnion
@@ -109,7 +129,7 @@ class df_scaler(TransformerMixin):
     def fit(self, X, y=None):
         self.feat_un.fit(X)
         return self
-    
+
     def transform(self, X, y=None):
         X_tr = self.feat_un.transform(X)
         columns = []
@@ -121,6 +141,6 @@ class df_scaler(TransformerMixin):
         X_tr = pd.DataFrame(X_tr, index=X.index, columns=columns)
         
         return X_tr
-    
+
     def get_params(self, deep=True):  # necessary to well behave in GridSearch
         return self.feat_un.get_params(deep=deep)

@@ -15,10 +15,11 @@ class make_ordinal(BaseEstimator, TransformerMixin):
     If unsure about converting or not a feature (maybe making dummies is better), make use of
     extra_cols and unsure_conversion
     '''
-    def __init__(self, cols, extra_cols=None):
+    def __init__(self, cols, extra_cols=None, include_extra=True):
         self.cols = cols
         self.extra_cols = extra_cols
         self.mapping = {'Po':1, 'Fa': 2, 'TA': 3, 'Gd': 4, 'Ex': 5}
+        self.include_extra = include_extra
     
 
     def fit(self, X, y=None):
@@ -27,10 +28,12 @@ class make_ordinal(BaseEstimator, TransformerMixin):
 
     def transform(self, X, y=None):
         if self.extra_cols:
-            self.cols += self.extra_cols
-        else:
-            for col in self.extra_cols:
-                del X[col]    
+            if self.include_extra:
+                self.cols += self.extra_cols
+            else:
+                for col in self.extra_cols:
+                    del X[col]
+
         for col in self.cols:
             X.loc[:, col] = X[col].map(self.mapping).fillna(0)
         return X
@@ -118,29 +121,9 @@ class recode_cat(BaseEstimator, TransformerMixin):
         X = self.tr_LotConfig(X)
         X = self.tr_MSZoning(X)
         X = self.tr_Alley(X)
-        X = self.tr_LandSlope(X)
+        # X = self.tr_LandSlope(X)
         X = self.tr_LandCont(X)
         X = self.tr_BldgType(X)
         X = self.tr_MasVnrType(X)
         X = self.tr_HouseStyle(X)
         return X
-    
-    
-class dummify(TransformerMixin):
-    '''
-    Wrapper for get dummies
-    '''
-    def __init__(self, drop_first=False):
-        self.drop_first = drop_first
-        self.columns = []  # useful to well behave with FeatureUnion
-
-    def fit(self, X, y=None):
-        return self
-    
-    def transform(self, X):
-        X = pd.get_dummies(X, drop_first=self.drop_first)
-        self.columns = X.columns
-        return X
-    
-    def get_features_name(self):
-        return self.columns
