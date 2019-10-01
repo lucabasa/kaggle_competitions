@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.2.0'
+__version__ = '1.2.1'
 __status__ = 'development'
 
 
@@ -15,21 +15,21 @@ class feat_sel(BaseEstimator, TransformerMixin):
     In this way we can build separate pipelines for separate data types.
     '''
     def __init__(self, dtype='numeric'):
-        self._dtype = dtype
+        self.dtype = dtype
  
     def fit( self, X, y=None ):
         return self 
     
     def transform(self, X, y=None):
-        if self._dtype == 'numeric':
+        if self.dtype == 'numeric':
             num_cols = X.columns[X.dtypes != object].tolist()
             return X[num_cols]
-        elif self._dtype == 'category':
+        elif self.dtype == 'category':
             cat_cols = X.columns[X.dtypes == object].tolist()
             return X[cat_cols]
 
 
-class df_imputer(TransformerMixin):
+class df_imputer(TransformerMixin, BaseEstimator):
     '''
     Just a wrapper for the SimpleImputer that keeps the dataframe structure
     '''
@@ -51,7 +51,7 @@ class df_imputer(TransformerMixin):
         return Xfilled
 
     
-class df_scaler(TransformerMixin):
+class df_scaler(TransformerMixin, BaseEstimator):
     '''
     Wrapper of StandardScaler or RobustScaler
     '''
@@ -88,7 +88,7 @@ class df_scaler(TransformerMixin):
         return list(self.columns)
 
 
-class dummify(TransformerMixin):
+class dummify(TransformerMixin, BaseEstimator):
     '''
     Wrapper for get dummies
     '''
