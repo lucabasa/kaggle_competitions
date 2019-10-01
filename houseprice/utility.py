@@ -38,3 +38,31 @@ def cv_score(df_train, y_train, kfolds, pipeline):
         oof[test_index] = pipeline.predict(val_data).ravel()
             
     return oof
+
+
+ def grid_search(data, target, estimator, param_grid, scoring, cv):
+    
+    grid = GridSearchCV(estimator=estimator, param_grid=param_grid, 
+                        cv=cv, scoring=scoring, n_jobs=-1, return_train_score=False)
+    
+    pd.options.mode.chained_assignment = None
+    tmp = data.copy()
+    grid = grid.fit(tmp, target)
+    pd.options.mode.chained_assignment = 'warn'
+    
+    result = pd.DataFrame(grid.cv_results_).sort_values(by='mean_test_score', 
+                                                        ascending=False).reset_index()
+    
+    del result['params']
+    times = [col for col in result.columns if col.endswith('_time')]
+    params = [col for col in result.columns if col.startswith('param_')]
+    splits = result[[col for col in result.columns if col.startswith('split')]].head()
+    splits.columns = [col.split('_test')[0] for col in splits.columns]
+    
+    splits.T.plot(alpha=0.5, figsize=(12,8))
+    plt.savefig('/plots/gridsearch.png')
+    plt.close()
+    
+    result = result[params + ['mean_test_score', 'std_test_score'] + times]
+    
+    return result, grid.best_params_
