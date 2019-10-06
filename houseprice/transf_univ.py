@@ -8,6 +8,8 @@ import numpy as np
 
 from sklearn.base import BaseEstimator, TransformerMixin
 
+import warnings
+
 
 class feat_sel(BaseEstimator, TransformerMixin):
     '''
@@ -92,16 +94,42 @@ class dummify(TransformerMixin, BaseEstimator):
     '''
     Wrapper for get dummies
     '''
-    def __init__(self, drop_first=False):
+    def __init__(self, drop_first=False, match_cols=True):
         self.drop_first = drop_first
         self.columns = []  # useful to well behave with FeatureUnion
+        self.match_cols = match_cols
 
     def fit(self, X, y=None):
         return self
     
+    def match_columns(self, X):
+        miss_train = list(set(X.columns) - set(self.columns))
+        miss_test = list(set(self.columns) - set(X.columns))
+        
+        err = 0
+        
+        if len(miss_test) > 0:
+            for col in miss_test:
+                X[col] = 0  # insert a column for the missing dummy
+                err += 1
+        if len(miss_train) > 0:
+            for col in miss_train:
+                del X[col]  # delete the column of the extra dummy
+                err += 1
+                
+        if err > 0:
+            warnings.warn('The dummies in this set do not match the ones in the train set, we corrected the issue.',
+                         UserWarning)
+            
+        return X
+    
     def transform(self, X):
         X = pd.get_dummies(X, drop_first=self.drop_first)
-        self.columns = X.columns
+        if (len(self.columns) > 0):
+            if self.match_cols:
+                X = self.match_columns(X)
+        else:
+            self.columns = X.columns
         return X
     
     def get_features_name(self):
