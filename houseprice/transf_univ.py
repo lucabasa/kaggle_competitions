@@ -155,7 +155,7 @@ class FeatureUnion_df(TransformerMixin, BaseEstimator):
                                     self.verbose)
         
     def fit(self, X, y=None):
-        self.feat_un.fit(X)
+        self.feat_un.fit(X, y)
         return self
 
     def transform(self, X, y=None):

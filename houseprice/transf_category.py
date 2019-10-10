@@ -44,7 +44,25 @@ class recode_cat(BaseEstimator, TransformerMixin):
     Recodes some categorical variables according to the insights gained from the
     data exploration phase.
     '''
-    def fit(self, X, y=None):
+    def __init__(self, mean_weight=10):
+        self.means = {}
+        self.counts = {}
+        self.mean_tot = 0
+        self.mean_weight = mean_weight
+        self.smooth = {}
+    
+    
+    def fit(self, X, y):
+        tmp_data = X.copy()
+        tmp_data['target'] = y
+        self.mean_tot = tmp_data['target'].mean()
+        self.means = tmp_data.groupby('Neighborhood')['target'].mean()
+        self.counts = tmp_data.groupby('Neighborhood')['target'].count()
+        
+        self.smooth = ((self.counts * self.means + self.mean_weight * self.mean_tot) / 
+                       (self.counts + self.mean_weight))
+        
+        del tmp_data
         return self
     
     
@@ -113,6 +131,11 @@ class recode_cat(BaseEstimator, TransformerMixin):
                                                          '2.5Unf': '2Story', 
                                                          'SLvl': 'SFoyer'}).fillna(data['HouseStyle'])
         return data
+
+
+    def tr_Neighborhood(self, data):
+        data['Neighborhood'] = data['Neighborhood'].map(self.smooth).fillna(self.mean_tot)
+        return data
     
     
     def transform(self, X, y=None):
@@ -126,4 +149,5 @@ class recode_cat(BaseEstimator, TransformerMixin):
         X = self.tr_BldgType(X)
         X = self.tr_MasVnrType(X)
         X = self.tr_HouseStyle(X)
+        X = self.tr_Neighborhood(X)
         return X
