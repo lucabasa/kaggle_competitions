@@ -31,7 +31,7 @@ def plot_correlations(data, target=None, limit=50, figsize=(12,10), **kwargs):
     '''
     corr = data.corr()
     if target:
-        corr['abs'] = abs(corr['Target'])
+        corr['abs'] = abs(corr[target])
         cor_target = corr.sort_values(by='abs', ascending=False)[target]
         cor_target = cor_target[:limit]
         del corr['abs']
