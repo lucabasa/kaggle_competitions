@@ -33,10 +33,10 @@ def get_coef(pipe):
     '''
     imp = pipe.steps[-1][1].coef_.tolist()
     feats = pipe.steps[-2][1].get_feature_names()
-
     result = pd.DataFrame({'feat':feats,'score':imp})
-    result = result.sort_values(by=['score'],ascending=False)
-
+    result['abs_res'] = abs(result['score'])
+    result = result.sort_values(by=['abs_res'],ascending=False)
+    del result['abs_res']
     return result
 
 
@@ -45,7 +45,7 @@ def get_feature_importance(pipe):
     Get dataframe with the feature importance of a model in Pipeline
     The step before the model has to have a get_feature_name method
     '''
-    imp = pipe.steps[-1][1].feature_importances_.tolist() 
+    imp = pipe.steps[-1][1].feature_importances_.tolist() #it's a pipeline
     feats = pipe.steps[-2][1].get_feature_names()
     result = pd.DataFrame({'feat':feats,'score':imp})
     result = result.sort_values(by=['score'],ascending=False)
@@ -94,7 +94,6 @@ def plot_predictions(data, true_label, pred_label, feature=None, hue=None, legen
         savename += '.png'
     plt.savefig('../plots/' + savename)
     plt.close()
-
 
 
 def evaluate(data, y_true, y_pred, pipe, feat='coef', hue=None, legend=False, savename='test.png'):

@@ -7,6 +7,9 @@ import pandas as pd
 import numpy as np
 
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.pipeline import FeatureUnion
+from sklearn.preprocessing import StandardScaler, RobustScaler
+from sklearn.impute import SimpleImputer
 
 import warnings
 

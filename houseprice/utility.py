@@ -6,7 +6,7 @@ __status__ = 'development'
 import pandas as pd
 import numpy as np
 
-from sklearn.model_selection import StratifiedShuffleSplit
+from sklearn.model_selection import StratifiedShuffleSplit, GridSearchCV, RandomizedSearchCV
 
 
 def make_test(train, test_size, random_state, strat_feat=None):
@@ -21,11 +21,13 @@ def make_test(train, test_size, random_state, strat_feat=None):
     return train_set, test_set
 
 
-def cv_score(df_train, y_train, kfolds, pipeline):
+def cv_score(df_train, y_train, kfolds, pipeline, imp_coef=False):
     oof = np.zeros(len(df_train))
     train = df_train.copy()
     
-    for train_index, test_index in kfolds.split(train.values):
+    feat_df = pd.DataFrame()
+    
+    for n_fold, (train_index, test_index) in enumerate(kfolds.split(train.values)):
             
         trn_data = train.iloc[train_index][:]
         val_data = train.iloc[test_index][:]
@@ -36,16 +38,36 @@ def cv_score(df_train, y_train, kfolds, pipeline):
         pipeline.fit(trn_data, trn_target)
 
         oof[test_index] = pipeline.predict(val_data).ravel()
-            
-    return oof
+
+        if imp_coef:
+            try:
+                fold_df = get_coef(pipeline)
+            except AttributeError:
+                fold_df = get_feature_importance(pipeline)
+                
+            fold_df['fold'] = n_fold + 1
+            feat_df = pd.concat([feat_df, fold_df], axis=0)
+       
+    if imp_coef:
+        feat_df = feat_df.groupby('feat')['score'].agg(['mean', 'std'])
+        feat_df['abs_sco'] = (abs(feat_df['mean']))
+        feat_df = feat_df.sort_values(by=['abs_sco'],ascending=False)
+        del feat_df['abs_sco']
+        return oof, feat_df
+    else:    
+        return oof
 
 
- def grid_search(data, target, estimator, param_grid, scoring, cv):
+def grid_search(data, target, estimator, param_grid, scoring, cv, random=False):
     
-    grid = GridSearchCV(estimator=estimator, param_grid=param_grid, 
-                        cv=cv, scoring=scoring, n_jobs=-1, return_train_score=False)
+    if random:
+        grid = RandomizedSearchCV(estimator=estimator, param_distributions=param_grid, cv=cv, scoring=scoring, 
+                                  n_iter=random, n_jobs=-1, random_state=434, iid=False)
+    else:
+        grid = GridSearchCV(estimator=estimator, param_grid=param_grid, 
+                            cv=cv, scoring=scoring, n_jobs=-1, return_train_score=False)
     
-    pd.options.mode.chained_assignment = None
+    pd.options.mode.chained_assignment = None  # turn on and off a warning of pandas
     tmp = data.copy()
     grid = grid.fit(tmp, target)
     pd.options.mode.chained_assignment = 'warn'
@@ -56,13 +78,7 @@ def cv_score(df_train, y_train, kfolds, pipeline):
     del result['params']
     times = [col for col in result.columns if col.endswith('_time')]
     params = [col for col in result.columns if col.startswith('param_')]
-    splits = result[[col for col in result.columns if col.startswith('split')]].head()
-    splits.columns = [col.split('_test')[0] for col in splits.columns]
-    
-    splits.T.plot(alpha=0.5, figsize=(12,8))
-    plt.savefig('/plots/gridsearch.png')
-    plt.close()
     
     result = result[params + ['mean_test_score', 'std_test_score'] + times]
     
-    return result, grid.best_params_
+    return result, grid.best_params_, grid.best_estimator_
