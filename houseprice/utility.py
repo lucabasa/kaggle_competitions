@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 __status__ = 'development'
 
 
@@ -10,6 +10,10 @@ from sklearn.model_selection import StratifiedShuffleSplit, GridSearchCV, Random
 
 
 def make_test(train, test_size, random_state, strat_feat=None):
+    '''
+    Creates a train and test, stratified on a feature or on a list of features
+    todo: allow for non-stratified splits
+    '''
     if strat_feat:
         
         split = StratifiedShuffleSplit(n_splits=1, test_size=test_size, random_state=random_state)
@@ -22,6 +26,13 @@ def make_test(train, test_size, random_state, strat_feat=None):
 
 
 def cv_score(df_train, y_train, kfolds, pipeline, imp_coef=False):
+    '''
+    Train and test a pipeline in kfold cross validation
+    Returns the oof predictions for the entire train set and a dataframe with the
+    coefficients or feature importances, averaged across the folds, with standard deviation
+
+    todo: report on the average score and variance too
+    '''
     oof = np.zeros(len(df_train))
     train = df_train.copy()
     
@@ -59,6 +70,12 @@ def cv_score(df_train, y_train, kfolds, pipeline, imp_coef=False):
 
 
 def grid_search(data, target, estimator, param_grid, scoring, cv, random=False):
+    '''
+    Calls a grid or a randomized search over a parameter grid
+    Returns a dataframe with the results for each configuration
+    Returns a dictionary with the best parameters
+    Returns the best (fitted) estimator
+    '''
     
     if random:
         grid = RandomizedSearchCV(estimator=estimator, param_distributions=param_grid, cv=cv, scoring=scoring, 
