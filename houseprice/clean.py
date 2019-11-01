@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.0.1'
+__version__ = '1.1.0'
 __status__ = 'development'
 
 
@@ -75,7 +75,7 @@ class general_cleaner(BaseEstimator, TransformerMixin):
         X.loc[fil, 'MisGarage'] = 1
         #GarageYrBlt
         X.loc[X.GarageYrBlt > 2200, 'GarageYrBlt'] = 2007 #correct mistake
-        X.loc[fil, 'GarageYrBlt'] = 0
+        X.loc[fil, 'GarageYrBlt'] = X['YearBuilt']  # if no garage, use the age of the building
         #GarageType
         X.loc[fil, 'GarageType'] = "NoGrg" #missing garage
         #GarageFinish
@@ -89,7 +89,110 @@ class general_cleaner(BaseEstimator, TransformerMixin):
         #Pool
         fil = ((X.PoolArea == 0) & (X.PoolQC.isnull()))
         X.loc[fil, 'PoolQC'] = 'NoPool' 
+
+        # not useful features
+        del X['Id']
+        del X['MiscFeature']  # we already know it doesn't matter
+        del X['Condition1']
+        del X['Condition2']
+        del X['Exterior1st']
+        del X['Exterior2nd']
+        del X['Functional']
+        del X['Heating']
+        del X['PoolQC']
+        del X['RoofMatl']
+        del X['RoofStyle']
+        del X['SaleCondition']
+        del X['SaleType']
+        del X['Utilities']
+        del X['BsmtFinType1']
+        del X['BsmtFinType2']
+        del X['BsmtFinSF1']
+        del X['BsmtFinSF2']
+        del X['Electrical']
+        del X['Foundation']
+        del X['Street']
+        del X['Fence']
+        del X['LandSlope']
+        del X['LowQualFinSF']
+        del X['FireplaceQu']
+        del X['PoolArea']
+        del X['MiscVal']
+        del X['MoSold']
+        del X['YrSold']
+        
+         # after model iterations
+        del X['KitchenAbvGr']
+        del X['GarageQual']
+        del X['GarageCond'] 
         
         return X
 
 
+class drop_columns(BaseEstimator, TransformerMixin):
+    '''
+    Drops columns that are not useful for the model
+    The decisions come from several iterations
+    '''
+    def __init__(self, lasso=False, ridge=False, forest=False, xgb=False, lgb=False):
+        self.columns = []
+        self.lasso = lasso
+        self.ridge = ridge
+        self.forest = forest
+        self.xgb = xgb
+        self.lgb = lgb
+        
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X, y=None):
+        to_drop = [col for col in X.columns if 'NoGrg' in col]  # dropping dummies that are redundant
+        to_drop += [col for col in X.columns if 'NoBsmt' in col]
+
+        if self.lasso:
+            to_drop += [col for col in X.columns if 'BsmtExposure' in col]
+            to_drop += [col for col in X.columns if 'BsmtCond' in col]
+            to_drop += [col for col in X.columns if 'ExterCond' in col]
+            to_drop += [col for col in X.columns if 'HouseStyle' in col] 
+            to_drop += [col for col in X.columns if 'LotShape' in col] 
+            to_drop += [col for col in X.columns if 'LotFrontage' in col]
+            to_drop += [col for col in X.columns if 'GarageYrBlt' in col] 
+            to_drop += [col for col in X.columns if 'GarageType' in col] 
+            to_drop += ['OpenPorchSF', '3SsnPorch'] 
+        if self.ridge: 
+            to_drop += [col for col in X.columns if 'BsmtExposure' in col]
+            to_drop += [col for col in X.columns if 'BsmtCond' in col]
+            to_drop += [col for col in X.columns if 'ExterCond' in col] 
+            to_drop += [col for col in X.columns if 'LotFrontage' in col]
+            to_drop += [col for col in X.columns if 'LotShape' in col] 
+            to_drop += [col for col in X.columns if 'HouseStyle' in col] 
+            to_drop += [col for col in X.columns if 'GarageYrBlt' in col]
+            to_drop += [col for col in X.columns if 'GarageCars' in col] 
+            to_drop += [col for col in X.columns if 'BldgType' in col] 
+            to_drop += ['OpenPorchSF', '3SsnPorch']
+        if self.forest: 
+            to_drop += [col for col in X.columns if 'BsmtExposure' in col]
+            to_drop += [col for col in X.columns if 'BsmtCond' in col]
+            to_drop += [col for col in X.columns if 'ExterCond' in col] 
+            to_drop += ['OpenPorchSF', '3SsnPorch'] 
+        if self.xgb:
+            to_drop += [col for col in X.columns if 'BsmtExposure' in col]
+            to_drop += [col for col in X.columns if 'BsmtCond' in col]
+            to_drop += [col for col in X.columns if 'ExterCond' in col]
+        if self.lgb: 
+            to_drop += [col for col in X.columns if 'LotFrontage' in col] 
+            to_drop += [col for col in X.columns if 'HouseStyle' in col]
+            to_drop += ['MisBsm'] 
+            
+        
+        for col in to_drop:
+            try:
+                del X[col]
+            except KeyError:
+                pass
+            
+        self.columns = X.columns
+        return X
+    
+    def get_feature_names(self):
+        return list(self.columns)
