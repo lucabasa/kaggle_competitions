@@ -11,8 +11,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 class transformation(TransformerMixin, BaseEstimator):
     def __init__(self, mean_weight=10):
         self.columns = None
-        self.mean_weight = mean_weight
-        self.smooth_team = {}
+
         
     def fit(self, X, y=None):
         return self
@@ -98,6 +97,34 @@ class transformation(TransformerMixin, BaseEstimator):
 
         return train_play
     
+    def get_team(self, data):
+        data.loc[:, 'Team_offense'] = np.where(data.offense_team == 'home', 
+                                               data.HomeTeamAbbr, data.VisitorTeamAbbr)
+        data.loc[:, 'Team_defense'] = np.where(data.offense_team == 'home', 
+                                               data.VisitorTeamAbbr, data.HomeTeamAbbr)
+        data.loc[data.offense_team == 'home', 'is_home'] = 1
+        data.loc[data.offense_team == 'away', 'is_home'] = 0
+    
+        return data
+    
+    
+    def dropper(self, X):
+        cleaned = X.copy()
+        to_drop = ['GameId', 'WindDirection', 'WindSpeed', 'GameWeather', 
+                    'PlayDirection', 'StadiumType', 'Location', 
+                   'GameClock', 'distance_from_ball', 'Quarter', 'Down', 
+                   'OffenseFormation', 'Temperature', 'Humidity', 
+                   'HomeScoreBeforePlay','VisitorScoreBeforePlay', 'offense_team', 
+                   'HomeTeamAbbr', 'VisitorTeamAbbr',
+                   'Dis', 'Dir', 'Yards', 'Distance', 'PlayId', 'X', 'Y']
+        for col in to_drop:
+            try:
+                del cleaned[col]
+            except KeyError:
+                pass
+        
+        return cleaned
+    
     
     def transform(self, X, y=None):
         train_play = self.process_play(X)
@@ -106,18 +133,19 @@ class transformation(TransformerMixin, BaseEstimator):
         to_drop = ['GameId', 'NflId', 'Team', 'Orientation','YardLine', 'Quarter', 'GameClock', 'PossessionTeam',
            'Down', 'FieldPosition', 'HomeScoreBeforePlay',
            'VisitorScoreBeforePlay', 'NflIdRusher', 'OffensePersonnel','DefensePersonnel',
-               'PlayDirection', 'Position', 'HomeTeamAbbr',
-           'VisitorTeamAbbr', 'Location', 'StadiumType', 'GameWeather',
+               'PlayDirection', 'Position', 
+           'Location', 'StadiumType', 'GameWeather',
            'Temperature', 'Humidity', 'WindSpeed', 'WindDirection', 'to_left',
-           'has_ball', 'offense_team', 'Distance',
-           'OffenseFormation', 'DefendersInTheBox', 'Turf']
+           'has_ball', 'Distance',
+           'OffenseFormation', 'DefendersInTheBox', 'Turf']    
 
         carriers.drop(to_drop, axis=1, inplace=True)
 
         full_train = pd.merge(carriers, train_play, on='PlayId')
-
-        full_train.drop(['GameId', 'WindDirection', 'WindSpeed', 'GameWeather', 
-                         'PlayDirection', 'StadiumType', 'Turf', 'Location', 'GameClock'], axis=1, inplace=True)
+        
+        full_train = self.get_team(full_train)
+        
+        full_train = self.dropper(full_train)
         
         self.columns = full_train.columns
 
@@ -126,3 +154,4 @@ class transformation(TransformerMixin, BaseEstimator):
     
     def get_features_name(self):
         return self.columns
+        

@@ -133,7 +133,7 @@ class dummify(TransformerMixin, BaseEstimator):
         if err > 0:
             warnings.warn('The dummies in this set do not match the ones in the train set, we corrected the issue.',
                          UserWarning)
-        return X
+        return X[self.columns]
         
     def transform(self, X):
         X = pd.get_dummies(X, drop_first=self.drop_first)
