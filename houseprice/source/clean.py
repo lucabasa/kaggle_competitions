@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.1.0'
+__version__ = '1.1.1'
 __status__ = 'development'
 
 
@@ -16,19 +16,12 @@ class general_cleaner(BaseEstimator, TransformerMixin):
     If flags the missing values
 
     This process is supposed to happen as first step of any pipeline
-
-    TODO: decide what to do with the dropped lines as the target is created before this point
     '''
-    def __init__(self, train=True):
-        self._train = train
         
     def fit(self, X, y=None):
         return self
     
     def transform(self, X, y=None):
-        if self._train:
-            # remove known outliers from train set
-            X = X.loc[X.GrLivArea < 4500].reset_index(drop=True)
         #LotFrontage
         X.loc[X.LotFrontage.isnull(), 'LotFrontage'] = 0
         #Alley
