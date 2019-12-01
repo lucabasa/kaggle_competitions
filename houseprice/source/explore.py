@@ -124,7 +124,11 @@ def find_cats(data, target, thrs=0.1, agg_func='mean', critical=0.05, ks=True, f
                                         normalize=True)
         tmp = data.loc[data[col].isin(counts[counts > thrs].index),:]
         if ks:
-            res = ks_test(tmp, col, target, critical=critical)
+            try:
+                res = ks_test(tmp, col, target, critical=critical)
+            except ValueError as e:
+                print(f'Column {col} throws the following error: {e}')
+                continue
             if res:
                 cats.append(col)
         else:
