@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.1.0'
+__version__ = '1.1.1'
 __status__ = 'development'
 
 
@@ -7,6 +7,8 @@ import pandas as pd
 import numpy as np
 
 from sklearn.model_selection import StratifiedShuffleSplit, GridSearchCV, RandomizedSearchCV
+
+import source.report as rp
 
 
 def make_test(train, test_size, random_state, strat_feat=None):
@@ -52,9 +54,9 @@ def cv_score(df_train, y_train, kfolds, pipeline, imp_coef=False):
 
         if imp_coef:
             try:
-                fold_df = get_coef(pipeline)
+                fold_df = rp.get_coef(pipeline)
             except AttributeError:
-                fold_df = get_feature_importance(pipeline)
+                fold_df = rp.get_feature_importance(pipeline)
                 
             fold_df['fold'] = n_fold + 1
             feat_df = pd.concat([feat_df, fold_df], axis=0)
