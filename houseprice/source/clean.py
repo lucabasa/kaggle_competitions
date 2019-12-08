@@ -21,7 +21,8 @@ class general_cleaner(BaseEstimator, TransformerMixin):
     def fit(self, X, y=None):
         return self
     
-    def transform(self, X, y=None):
+    def transform(self, df, y=None):
+        X = df.copy()
         #LotFrontage
         X.loc[X.LotFrontage.isnull(), 'LotFrontage'] = 0
         #Alley
