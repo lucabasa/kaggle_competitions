@@ -217,7 +217,7 @@ def aggregated_stats(league):
     save_loc = 'processed_data/'+league + '/'
 
     if league == 'women':
-        origins = {'reg': 'raw_data/womens-machine-learning-competition-2019/WDataFiles/WRegularSeasonDetailedResults.csv',
+        origins = {'reg': 'data/raw_men/Stage2DataFiles/RegularSeasonDetailedResults.csv',
                 'play': 'raw_data/womens-machine-learning-competition-2019/WDataFiles/WNCAATourneyDetailedResults.csv'}
     else:
         origins = {'reg': 'raw_data/mens-machine-learning-competition-2019/DataFiles/RegularSeasonDetailedResults.csv',
