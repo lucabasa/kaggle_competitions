@@ -118,9 +118,9 @@ def prepare_data(league):
     save_loc = 'processed_data/' + league + '/'
 
     if league == 'women':
-        rregular_season = 'data/raw_women/Stage2WDataFiles/WRegularSeasonDetailedResults.csv'
+        regular_season = 'data/raw_women/Stage2WDataFiles/WRegularSeasonDetailedResults.csv'
         playoff = 'data/raw_women/Stage2WDataFiles/WNCAATourneyDetailedResults.csv'
-        playoff_compact = 'data/raw_men/Stage2WDataFiles/WNCAATourneyCompactResults.csv'
+        playoff_compact = 'data/raw_women/Stage2WDataFiles/WNCAATourneyCompactResults.csv'
         seed = 'data/raw_women/Stage2WDataFiles/WNCAATourneySeeds.csv'
         save_loc = 'data/processed_women/'
     else:
@@ -155,7 +155,7 @@ def prepare_data(league):
     
     playoff_stats = add_seed(seed, playoff_stats)
     
-    # Target data generation
+    # Target data generation Todo: this is up to 2018
     target_data = pd.read_csv(playoff_compact)
     target_data = make_teams_target(target_data, league)
     
