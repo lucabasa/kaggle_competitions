@@ -1,10 +1,12 @@
 __author__ = 'lucabasa'
-__version__ = '1.2.0'
+__version__ = '2.0.0'
 __status__ = 'development'
 
 
 import pandas as pd 
 import numpy as np 
+
+from source.aggregated_stats import process_details, full_stats
 
 
 def make_teams_target(data, league):
@@ -52,37 +54,6 @@ def make_teams_target(data, league):
     return df
 
 
-def make_training_regular(reg, origins, save_loc):
-#    for key in origins.keys():
-#        print(key)
-    key = 'reg_full'
-    details = pd.read_csv(save_loc + origins[key])
-
-    tmp = details.copy()
-    tmp.columns = ['Season', 'DayNum', 'Team1'] + \
-                ['T1_'+col for col in tmp.columns if col not in ['Season', 'DayNum', 'TeamID']]
-    total = pd.merge(reg, tmp, on=['Season', 'DayNum', 'Team1'], how='left')
-
-    tmp = details.copy()
-    tmp.columns = ['Season', 'DayNum', 'Team2'] + \
-                ['T2_'+col for col in tmp.columns if col not in ['Season', 'DayNum', 'TeamID']]
-    total = pd.merge(total, tmp, on=['Season', 'DayNum', 'Team2'], how='left')
-
-    total = total.rename(columns={'T1_Loc_x': 'T1_Loc', 'T2_Loc_x': 'T2_Loc', 
-                                    'T1_Loc_y': 'T1_Loc_mean', 'T2_Loc_y': 'T2_Loc_mean'})
-
-    if total.isnull().any().any():
-        if save_loc.endswith('/men/'):
-            raise ValueError('Something went wrong')
-        else:
-            print('Some games are missing')
-            before = total.shape[0]
-            total = total.dropna()
-            print(f'{before - total.shape[0]} games dropped')
-
-    total.to_csv(save_loc + 'training_' + key + '.csv', index=False)
-
-
 def _add_rank(total):
     ranks = pd.read_csv('raw_data/mens-machine-learning-competition-2019/MasseyOrdinals.csv')
     ranks = ranks[['Season', 'RankingDayNum', 
@@ -97,19 +68,10 @@ def _add_rank(total):
     return total
 
 
-def _add_seed(save_loc, total):
-    if save_loc.endswith('/men/'):
-        seeds = pd.read_csv('raw_data/mens-machine-learning-competition-2019/DataFiles/NCAATourneySeeds.csv')
-        seeds = seeds[seeds.Season >= 2003].copy()
-    else:
-        seeds = pd.read_csv('raw_data/womens-machine-learning-competition-2019/WDataFiles/WNCAATourneySeeds.csv')
-        seeds = seeds[seeds.Season >= 2010].copy()
-
-    seeds['seed_num'] = seeds.Seed.apply(lambda x: int(x[1:3]))
-    seeds = seeds.rename(columns={'TeamID': 'Team1', 'seed_num': 'T1_seed'})
-    total = pd.merge(total, seeds[['Season', 'Team1', 'T1_seed']], on=['Season', 'Team1'], how='left')
-    seeds = seeds.rename(columns={'Team1': 'Team2', 'T1_seed': 'T2_seed'})
-    total = pd.merge(total, seeds[['Season', 'Team2', 'T2_seed']], on=['Season', 'Team2'], how='left')
+def add_seed(seed_location, total):
+    seed_data = pd.read_csv(seed_location)
+    seed_data['Seed'] = seed_data['Seed'].apply(lambda x: int(x[1:3]))
+    total = pd.merge(total, seed_data, how='left', on=['TeamID', 'Season'])
     return total
 
 
@@ -130,88 +92,84 @@ def _add_stage(save_loc, total):
     return total
 
 
-def make_testing_playoff(play, origins, save_loc):
-    details = pd.read_csv(save_loc + origins['play_season'])
-
+def make_training_data(details, targets):
     tmp = details.copy()
     tmp.columns = ['Season', 'Team1'] + \
                 ['T1_'+col for col in tmp.columns if col not in ['Season', 'TeamID']]
-    total = pd.merge(play, tmp, on=['Season', 'Team1'], how='left')
+    total = pd.merge(targets, tmp, on=['Season', 'Team1'], how='left')
 
     tmp = details.copy()
     tmp.columns = ['Season', 'Team2'] + \
                 ['T2_'+col for col in tmp.columns if col not in ['Season', 'TeamID']]
     total = pd.merge(total, tmp, on=['Season', 'Team2'], how='left')
-
+    
     if total.isnull().any().any():
-        if save_loc.endswith('/men/'):
-            raise ValueError('Something went wrong')
-        else:
-            print('Some games are missing')
-            before = total.shape[0]
-            total = total.dropna()
-            print(f'{before - total.shape[0]} games dropped')
-
-    #total = total.rename(columns={'T1_Loc_x': 'T1_Loc', 'T2_Loc_x': 'T2_Loc', 
-    #                                'T1_Loc_y': 'T1_Loc_mean', 'T2_Loc_y': 'T2_Loc_mean'})
-
-    total = _add_stage(save_loc, total)
-
-    if save_loc.endswith('/men/'):
-        total = _add_rank(total)
-
-    total = _add_seed(save_loc, total)
-
-    #del total['T1_Loc']
-    #del total['T2_Loc']
-
+        raise ValueError('Something went wrong')
+        
     stats = [col[3:] for col in total.columns if 'T1_' in col]
 
     for stat in stats:
         total['delta_'+stat] = total['T1_'+stat] - total['T2_'+stat]
-
-    if total.isnull().any().any():
-        raise ValueError('Something went wrong')
-
-    total.to_csv(save_loc + 'testing_playoff.csv', index=False)
+        
+    return total
 
 
-def make_train_test(league):
+def prepare_data(league):
     save_loc = 'processed_data/' + league + '/'
 
     if league == 'women':
-        raw_loc = 'raw_data/womens-machine-learning-competition-2019/WDataFiles/'
-
-        origins = {'reg_full': 'teams_byday_reg_all_past.csv', 
-                    'reg_last5': 'teams_byday_reg_last_5.csv', 
-                    'reg_last10': 'teams_byday_reg_last_10.csv',
-                    'play_season': 'teams_full_reg.csv'}
-
-        results = {'reg': 'WRegularSeasonCompactResults.csv',
-                    'play': 'WNCAATourneyCompactResults.csv'}
+        rregular_season = 'data/raw_women/Stage2WDataFiles/WRegularSeasonDetailedResults.csv'
+        playoff = 'data/raw_women/Stage2WDataFiles/WNCAATourneyDetailedResults.csv'
+        playoff_compact = 'data/raw_men/Stage2WDataFiles/WNCAATourneyCompactResults.csv'
+        seed = 'data/raw_women/Stage2WDataFiles/WNCAATourneySeeds.csv'
+        save_loc = 'data/processed_women/'
     else:
-        raw_loc = 'raw_data/mens-machine-learning-competition-2019/DataFiles/'
-
-        origins = {'reg_full': 'teams_byday_reg_all_past.csv', 
-                    'reg_last5': 'teams_byday_reg_last_5.csv', 
-                    'reg_last10': 'teams_byday_reg_last_10.csv',
-                    'play_season': 'teams_full_reg.csv'}
-
-        results = {'reg': 'RegularSeasonCompactResults.csv',
-                    'play': 'NCAATourneyCompactResults.csv'}
-
-    compact = pd.read_csv(raw_loc + results['reg'])
-    compact = make_teams_target(compact, league)
-    make_training_regular(compact, origins, save_loc)
-
-    compact = pd.read_csv(raw_loc + results['play'])
-    compact = make_teams_target(compact, league)
-    make_testing_playoff(compact, origins, save_loc)
+        regular_season = 'data/raw_men/Stage2DataFiles/RegularSeasonDetailedResults.csv'
+        playoff = 'data/raw_men/Stage2DataFiles/NCAATourneyDetailedResults.csv'
+        playoff_compact = 'data/raw_men/Stage2DataFiles/NCAATourneyCompactResults.csv'
+        seed = 'data/raw_men/Stage2DataFiles/NCAATourneySeeds.csv'
+        rank = 'data/raw_men/MasseyOrdinals_thru_2019_day_128/MasseyOrdinals_thru_2019_day_128.csv'
+        save_loc = 'data/processed_men/'
+    
+    # Season stats
+    reg = pd.read_csv(regular_season)
+    reg = process_details(reg)
+    reg.to_csv(save_loc + 'game_details_regular_extended.csv', index=False)
+    regular_stats = full_stats(reg)
+    
+    # Last 2 weeks stats
+    last2weeks = reg[reg.DayNum >= 118].copy()
+    last2weeks = full_stats(last2weeks)
+    last2weeks.columns = ['L2W_' + col for col in last2weeks]
+    last2weeks.rename(columns={'L2W_Season': 'Season', 'L2W_TeamID': 'TeamID'}, inplace=True)
+    
+    regular_stats = pd.merge(regular_stats, last2weeks, on=['Season', 'TeamID'], how='left')
+    
+    regular_stats = add_seed(seed, regular_stats)
+    
+    # Playoff stats
+    play = pd.read_csv(playoff)
+    play = process_details(play)
+    play.to_csv(save_loc + 'game_details_playoff_extended.csv', index=False)
+    playoff_stats = full_stats(play)
+    
+    playoff_stats = add_seed(seed, playoff_stats)
+    
+    # Target data generation
+    target_data = pd.read_csv(playoff_compact)
+    target_data = make_teams_target(target_data, league)
+    
+    all_reg = make_training_data(regular_stats, target_data)
+    all_reg.to_csv(save_loc + 'training_data.csv', index=False)
+    
+    playoff_stats.to_csv(save_loc + 'playoff_stats.csv', index=False)
+    
+    return all_reg
 
 
 if __name__=='__main__':
-    make_train_test('men')
-    make_train_test('women')
+    prepare_data('men')
+    prepare_data('women')
     
 
 
