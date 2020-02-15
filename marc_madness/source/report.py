@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.5.0'
+__version__ = '1.6.0'
 __status__ = 'development'
 
 
@@ -214,6 +214,36 @@ def _plot_proba(score, label, spline, ax):
     return ax
 
 
+def plot_pred_prob(oof, test, y_train, y_test):
+    
+    fig, ax = plt.subplots(1,2, figsize=(15, 6))
+    
+    df = pd.DataFrame()
+    df['true'] = np.where(y_train > 0, 1, 0)
+    df['Prediction'] = oof
+    
+    df[df.true==1]['Prediction'].hist(bins=50, ax=ax[0], alpha=0.5, color='g', label='Victory')
+    df[df.true==0]['Prediction'].hist(bins=50, ax=ax[0], alpha=0.5, color='r', label='Loss')
+    
+    df = pd.DataFrame()
+    df['true'] = np.where(y_test > 0, 1, 0)
+    df['Prediction'] = test
+
+    df[df.true==1]['Prediction'].hist(bins=50, ax=ax[1], alpha=0.5, color='g', label='Victory')
+    df[df.true==0]['Prediction'].hist(bins=50, ax=ax[1], alpha=0.5, color='r', label='Loss')
+    
+    ax[0].axvline(0.5, color='k', linestyle='--')
+    ax[1].axvline(0.5, color='k', linestyle='--')
+    
+    ax[0].set_title('Training data')
+    ax[1].set_title('Test data')
+    ax[0].grid(False)
+    ax[1].grid(False)
+    ax[0].legend()
+    ax[1].legend()
+    fig.suptitle('Probabilities of victory', fontsize=15)
+
+
 def report_points(train, test, y_train, y_test, oof, preds, plot=True):
     mae_oof = round(mean_absolute_error(y_true=y_train, y_pred=oof), 4)
     mae_test = round(mean_absolute_error(y_true=y_test, y_pred=preds), 4)
@@ -245,6 +275,8 @@ def report_points(train, test, y_train, y_test, oof, preds, plot=True):
         # plot predictions
         plot_predictions(train, y_train, oof, savename=False)
         plot_predictions(test, y_test, preds, savename=False)
+        
+        plot_pred_prob(spline_oof, spline_test, y_train, y_test)
     
     print(f'MAE train: \t\t\t {mae_oof}')
     print(f'MAE test: \t\t\t {mae_test}')
