@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.6.0'
+__version__ = '1.7.2'
 __status__ = 'development'
 
 
@@ -9,7 +9,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from sklearn.metrics import mean_squared_error, mean_absolute_error, explained_variance_score, max_error
+from sklearn.metrics import mean_squared_error, mean_absolute_error, explained_variance_score, max_error, accuracy_score, log_loss
+
+from scipy.interpolate import UnivariateSpline
 
 from datetime import date
 from os.path import exists
@@ -192,10 +194,10 @@ def _point_to_proba(oof, y_train, preds):
     datdict = {dat[k][0]: dat[k][1] for k in range(len(dat))}
 
     spline_model = UnivariateSpline(list(datdict.keys()), list(datdict.values()))  
-    spline_oof = spline_model(oof)
-    spline_test = spline_model(preds)
+    spline_oof = spline_model(np.clip(oof, -30, 30))
+    spline_test = spline_model(np.clip(preds, -30, 30))
     
-    return spline_oof, spline_test
+    return np.clip(spline_oof, 0.03, 0.97), np.clip(spline_test, 0.03, 0.97)
 
 
 def _plot_proba(score, label, spline, ax):
@@ -288,3 +290,57 @@ def report_points(train, test, y_train, y_test, oof, preds, plot=True):
     print(f'Logloss test: \t\t\t {logloss_test}')
     print(f'Unsure train: \t\t\t {n_unsure_oof}%')
     print(f'Unsure test: \t\t\t {n_unsure_test}%')
+
+    
+def report_victory(y_train, y_test, oof, preds, probs=True):
+    
+    if probs:
+        acc_oof = round(accuracy_score(y_true=y_train, y_pred=(oof>0.5).astype(int)),4)
+        acc_test = round(accuracy_score(y_true=y_test, y_pred=(preds>0.5).astype(int)),4)
+        n_unsure_oof = round((abs(oof - 0.5) < 0.05).mean() * 100, 4)
+        n_unsure_test = round((abs(preds - 0.5) < 0.05).mean() * 100, 4)
+        logloss_oof = round(log_loss(y_true=y_train, y_pred=oof), 4)
+        logloss_test = round(log_loss(y_true=y_test, y_pred=preds), 4)
+        
+        plot_pred_prob(oof, preds, y_train, y_test)
+    
+    print(f'Accuracy train: \t\t {acc_oof}')
+    print(f'Accuracy test: \t\t\t {acc_test}')
+    print(f'Logloss train: \t\t\t {logloss_oof}')
+    print(f'Logloss test: \t\t\t {logloss_test}')
+    print(f'Unsure train: \t\t\t {n_unsure_oof}%')
+    print(f'Unsure test: \t\t\t {n_unsure_test}%')    
+    
+
+def yearly_wrapper(train, test, y_train, y_test, oof, preds, min_yr=2015):
+    y_train_total = []
+    y_test_total = []
+    oof_total = []
+    preds_total = []
+    full_train = []
+    full_test = []
+    for yr in train.keys():
+        print(yr)
+        print('\n')
+        report_points(train[yr], test[yr], y_train[yr], y_test[yr], oof[yr], preds[yr], plot=False)
+        print('\n')
+        print('_'*40)
+        print('\n')
+        if int(yr) >= min_yr:
+            y_train_total.append(y_train[yr])
+            y_test_total.append(y_test[yr])
+            oof_total += list(oof[yr])
+            preds_total += list(preds[yr])
+            full_train.append(train[yr])
+            full_test.append(test[yr])
+        
+    print('Total predictions')
+    print('\n')
+    y_train_total = pd.concat(y_train_total, ignore_index=True)
+    y_test_total = pd.concat(y_test_total, ignore_index=True)
+    full_train = pd.concat(full_train, ignore_index=True)
+    full_test = pd.concat(full_test, ignore_index=True)
+    oof_total = pd.Series(oof_total)
+    preds_total = pd.Series(preds_total)
+    report_points(full_train, full_test, y_train_total, y_test_total, oof_total, preds_total, plot=True)
+    
