@@ -1,10 +1,12 @@
 __author__ = 'lucabasa'
-__version__ = '1.2.0'
+__version__ = '1.3.0'
 __status__ = 'development'
 
 
 import pandas as pd
 import numpy as np
+
+from scipy.interpolate import UnivariateSpline
 
 import source.utility as ut
 
@@ -29,6 +31,18 @@ def _make_preds(train, y_train, test, model, kfolds, predict_proba):
         predictions = fit_model.predict(test)
     
     return fit_model, oof, imp_coef, predictions
+
+
+def point_to_proba(oof, y_train, preds):
+    dat = list(zip(np.clip(oof, -30, 30), np.where(y_train > 0, 1, 0)))
+    dat = sorted(dat, key = lambda x: x[0])
+    datdict = {dat[k][0]: dat[k][1] for k in range(len(dat))}
+
+    spline_model = UnivariateSpline(list(datdict.keys()), list(datdict.values()))  
+    spline_oof = spline_model(np.clip(oof, -30, 30))
+    spline_test = spline_model(np.clip(preds, -30, 30))
+    
+    return np.clip(spline_oof, 0.03, 0.97), np.clip(spline_test, 0.03, 0.97)
 
 
 def random_split(data, model, kfolds, target, test_size=0.2, predict_proba=False):
@@ -56,7 +70,9 @@ def yearly_split(data, model, kfolds, target, predict_proba=False):
     y_test = {}
     predictions = {}
     
-    for year in data.Season.unique():
+    years = [2015, 2016, 2017, 2018, 2019]
+    
+    for year in years:
         yr = str(year)
         train[yr] = data[data.Season != year].copy()
         test[yr] = data[data.Season == year].copy()

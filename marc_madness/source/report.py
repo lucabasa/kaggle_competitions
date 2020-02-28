@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.7.2'
+__version__ = '1.8.0'
 __status__ = 'development'
 
 
@@ -9,13 +9,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from sklearn.metrics import mean_squared_error, mean_absolute_error, explained_variance_score, max_error, accuracy_score, log_loss
-
-from scipy.interpolate import UnivariateSpline
+from sklearn.metrics import mean_squared_error, mean_absolute_error, explained_variance_score, max_error
+from sklearn.metrics import accuracy_score, log_loss, roc_auc_score
 
 from datetime import date
 from os.path import exists
 
+from source.validate import point_to_proba
 
 def _plot_diagonal(ax):
     xmin, xmax = ax.get_xlim()
@@ -188,18 +188,6 @@ def store_results(file_loc, label, prediction, model, parameters, target_name, v
     return
 
 
-def _point_to_proba(oof, y_train, preds):
-    dat = list(zip(np.clip(oof, -30, 30), np.where(y_train > 0, 1, 0)))
-    dat = sorted(dat, key = lambda x: x[0])
-    datdict = {dat[k][0]: dat[k][1] for k in range(len(dat))}
-
-    spline_model = UnivariateSpline(list(datdict.keys()), list(datdict.values()))  
-    spline_oof = spline_model(np.clip(oof, -30, 30))
-    spline_test = spline_model(np.clip(preds, -30, 30))
-    
-    return np.clip(spline_oof, 0.03, 0.97), np.clip(spline_test, 0.03, 0.97)
-
-
 def _plot_proba(score, label, spline, ax):
     plot_df = pd.DataFrame({"pred": score, 
                             "label": np.where(label > 0, 1, 0), 
@@ -253,11 +241,13 @@ def report_points(train, test, y_train, y_test, oof, preds, plot=True):
     mse_test = round(np.sqrt(mean_squared_error(y_true=y_test, y_pred=preds)), 4)
     acc_oof = round(accuracy_score(y_true=(y_train>0).astype(int), y_pred=(oof>0).astype(int)),4)
     acc_test = round(accuracy_score(y_true=(y_test>0).astype(int), y_pred=(preds>0).astype(int)),4)
-    n_unsure_oof = round((abs(oof) < 1).mean() * 100, 2)
-    n_unsure_test = round((abs(preds) < 1).mean() * 100, 2)
+    auc_oof = round(roc_auc_score(y_true=(y_train>0).astype(int), y_pred=(oof>0).astype(int)),4)
+    auc_test = round(roc_auc_score(y_true=(y_test>0).astype(int), y_pred=(preds>0).astype(int)),4)
+    n_unsure_oof = round((abs(oof) < 2).mean() * 100, 2)
+    n_unsure_test = round((abs(preds) < 2).mean() * 100, 2)
     
     # transform into probabilities
-    spline_oof, spline_test = _point_to_proba(oof, y_train, preds)
+    spline_oof, spline_test = point_to_proba(oof, y_train, preds)
     
     logloss_oof = round(log_loss(y_true=np.where(y_train > 0, 1, 0), y_pred=spline_oof), 4)
     logloss_test = round(log_loss(y_true=np.where(y_test > 0, 1, 0), y_pred=spline_test), 4)
@@ -286,6 +276,8 @@ def report_points(train, test, y_train, y_test, oof, preds, plot=True):
     print(f'RMSE test: \t\t\t {mse_test}')
     print(f'Accuracy train: \t\t {acc_oof}')
     print(f'Accuracy test: \t\t\t {acc_test}')
+    print(f'AUC ROC train: \t\t {auc_oof}')
+    print(f'AUC ROC test: \t\t\t {auc_test}')
     print(f'Logloss train: \t\t\t {logloss_oof}')
     print(f'Logloss test: \t\t\t {logloss_test}')
     print(f'Unsure train: \t\t\t {n_unsure_oof}%')
@@ -297,8 +289,10 @@ def report_victory(y_train, y_test, oof, preds, probs=True):
     if probs:
         acc_oof = round(accuracy_score(y_true=y_train, y_pred=(oof>0.5).astype(int)),4)
         acc_test = round(accuracy_score(y_true=y_test, y_pred=(preds>0.5).astype(int)),4)
-        n_unsure_oof = round((abs(oof - 0.5) < 0.05).mean() * 100, 4)
-        n_unsure_test = round((abs(preds - 0.5) < 0.05).mean() * 100, 4)
+        auc_oof = round(roc_auc_score(y_true=y_train, y_pred=(oof>0.5).astype(int)),4)
+        auc_test = round(roc_auc_score(y_true=y_test, y_pred=(preds>0.5).astype(int)),4)
+        n_unsure_oof = round((abs(oof - 0.5) < 0.1).mean() * 100, 4)
+        n_unsure_test = round((abs(preds - 0.5) < 0.1).mean() * 100, 4)
         logloss_oof = round(log_loss(y_true=y_train, y_pred=oof), 4)
         logloss_test = round(log_loss(y_true=y_test, y_pred=preds), 4)
         
@@ -306,6 +300,8 @@ def report_victory(y_train, y_test, oof, preds, probs=True):
     
     print(f'Accuracy train: \t\t {acc_oof}')
     print(f'Accuracy test: \t\t\t {acc_test}')
+    print(f'AUC ROC train: \t\t {auc_oof}')
+    print(f'AUC ROC test: \t\t\t {auc_test}')
     print(f'Logloss train: \t\t\t {logloss_oof}')
     print(f'Logloss test: \t\t\t {logloss_test}')
     print(f'Unsure train: \t\t\t {n_unsure_oof}%')

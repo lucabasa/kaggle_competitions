@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.3.0'
+__version__ = '1.3.1'
 __status__ = 'development'
 
 
@@ -61,7 +61,7 @@ def cv_score(df_train, y_train, kfolds, pipeline, imp_coef=False, predict_proba=
         if imp_coef:
             try:
                 fold_df = rp.get_coef(pipeline)
-            except AttributeError:
+            except (AttributeError, KeyError):
                 fold_df = rp.get_feature_importance(pipeline)
                 
             fold_df['fold'] = n_fold + 1

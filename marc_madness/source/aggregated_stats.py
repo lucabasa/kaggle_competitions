@@ -72,13 +72,12 @@ def process_details(data):
     df['LReb_opp'] = df['LDR'] / (df['WFGA'] - df['WFGM'])
 
 
-
     #df['WTO_alone'] = df['WTO'] - df['LStl']
     #df['LTO_alone'] = df['LTO'] - df['WStl']
     
     for col in stats:
         df[col+'_diff'] = df['W'+col] - df['L'+col]
-        #df[col+'_binary'] = (df[col+'_diff'] > 0).astype(int)
+        df[col+'_advantage'] = (df[col+'_diff'] > 0).astype(int)
     
     return df
 
