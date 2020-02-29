@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.6.0'
+__version__ = '1.7.0'
 __status__ = 'development'
 
 
@@ -10,12 +10,6 @@ import numpy as np
 
 def process_details(data):
     df = data.copy()
-    stats = ['Score', 'FGM', 'FGA', 'FGM3', 'FGA3', 'FTM', 
-             'FTA', 'OR', 'DR', 'Ast', 'TO', 'Stl', 'Blk', 
-             'PF', 'FGM2', 'FGA2', 'Tot_Reb', 'FGM_no_ast', 
-             'Def_effort', 'Reb_opp', 'possessions', 
-             'off_rating', 'def_rating', 'scoring_opp', 
-             'TO_perposs', 'impact'] # , 'TO_alone'
         
     for prefix in ['W', 'L']:
         df[prefix+'FG_perc'] = df[prefix+'FGM'] / df[prefix+'FGA']
@@ -27,17 +21,28 @@ def process_details(data):
         df[prefix+'Tot_Reb'] = df[prefix+'OR'] + df[prefix+'DR']
         df[prefix+'FGM_no_ast'] = df[prefix+'FGM'] - df[prefix+'Ast']
         df[prefix+'FGM_no_ast_perc'] = df[prefix+'FGM_no_ast'] / df[prefix+'FGM']
-        df[prefix+'possessions'] = df[prefix+'FGA'] - df[prefix+'OR'] + df[prefix+'TO'] - 0.475*df[prefix+'FTA']
+        df[prefix+'possessions'] = df[prefix+'FGA'] - df[prefix+'OR'] + df[prefix+'TO'] + 0.475*df[prefix+'FTA']
         df[prefix+'off_rating'] = df[prefix+'Score'] / df[prefix+'possessions'] * 100
-        df[prefix+'scoring_opp'] = (df[prefix+'FGA'] + 0.475*df[prefix+'FTA']) / df[prefix+'possessions']
+        df[prefix+'shtg_opportunity'] = 1 + (df[prefix+'OR'] - df[prefix+'TO']) / df[prefix+'possessions']
         df[prefix+'TO_perposs'] = df[prefix+'TO'] / df[prefix+'possessions']
+        df[prefix+'True_shooting_perc'] = 0.5 * df[prefix+'Score'] / (df[prefix+'FGA'] + 0.475 * df[prefix+'FTA'])
         df[prefix+'IE_temp'] = df[prefix+'Score'] + df[prefix+'FTM'] + df[prefix+'FGM'] + \
                                 df[prefix+'DR'] + 0.5*df[prefix+'OR'] - df[prefix+'FTA'] - df[prefix+'FGA'] + \
                                 df[prefix+'Ast'] + df[prefix+'Stl'] + 0.5*df[prefix+'Blk'] - df[prefix+'PF']
 
     df['Wdef_rating'] = df['Loff_rating']
     df['Ldef_rating'] = df['Woff_rating']
-    #df['Wedge'] = df['Woff_rating'] - df['Ldef_rating']
+    df['Wopp_shtg_opportunity'] = df['Lshtg_opportunity']
+    df['Lopp_shtg_opportunity'] = df['Wshtg_opportunity']
+    df['Wopp_possessions'] = df['Lpossessions']
+    df['Lopp_possessions'] = df['Wpossessions']
+    df['Wopp_score'] = df['LScore']
+    df['Lopp_score'] = df['WScore']
+    # These will be needed for the true shooting percentage when we aggregate
+    df['Wopp_FTA'] = df['LFTA']
+    df['Wopp_FGA'] = df['LFGA']
+    df['Lopp_FTA'] = df['WFTA']
+    df['Lopp_FGA'] = df['WFGA']
 
     df['Wimpact'] = df['WIE_temp'] / (df['WIE_temp'] + df['LIE_temp'])
     df['Limpact'] = df['LIE_temp'] / (df['WIE_temp'] + df['LIE_temp'])
@@ -46,34 +51,27 @@ def process_details(data):
     del df['LIE_temp']
 
     df[[col for col in df.columns if 'perc' in col]] = df[[col for col in df.columns if 'perc' in col]].fillna(0)
-        
-    #df['Game_Rebounds'] = df['WTot_Reb'] + df['LTot_Reb']
-    #df['WReb_frac'] = df['WTot_Reb'] / df['Game_Rebounds']
-    #df['LReb_frac'] = df['LTot_Reb'] / df['Game_Rebounds']
+
+#     df['WDef_effort'] = df['LFGA2']*2 + df['LFGA3']*3 - \
+#                         df['LFGM2']*2 - df['LFGM3']*3 - \
+#                         df['LOR']*( (df['LFGA2']/df['LFGA'])*2 + (df['LFGA3']/df['LFGA'])*3 ) + \
+#                         df['LFTA']*( (df['LFGA2']/df['LFGA'])*2 + (df['LFGA3']/df['LFGA'])*3 ) - df['LFTM']
+#     df['LDef_effort'] = df['WFGA2']*2 + df['WFGA3']*3 - \
+#                         df['WFGM2']*2 - df['WFGM3']*3 - \
+#                         df['WOR']*( (df['WFGA2']/df['WFGA'])*2 + (df['WFGA3']/df['WFGA'])*3 ) + \
+#                         df['WFTA']*( (df['WFGA2']/df['WFGA'])*2 + (df['WFGA3']/df['WFGA'])*3 ) - df['WFTM']
+
+    df['WDR_opportunity'] = df['WDR'] / (df['LFGA'] - df['LFGM'])
+    df['LDR_opportunity'] = df['LDR'] / (df['WFGA'] - df['WFGM'])
+    df['WOR_opportunity'] = df['WOR'] / (df['WFGA'] - df['WFGM'])
+    df['LOR_opportunity'] = df['LOR'] / (df['LFGA'] - df['LFGM'])
     
-    #df['Game_TO'] = df['WTO'] +df['LTO']
-    #df['WTO_frac'] = df['WTO'] / df['Game_TO']
-    #df['LTO_frac'] = df['LTO'] / df['Game_TO']
-    
-    #df['Game_PF'] = df['WPF'] +df['LPF']
-    #df['WPF_frac'] = df['WPF'] / df['Game_PF']
-    #df['LPF_frac'] = df['LPF'] / df['Game_PF']
-
-    df['WDef_effort'] = df['LFGA2']*2 + df['LFGA3']*3 - \
-                        df['LFGM2']*2 - df['LFGM3']*3 - \
-                        df['LOR']*( (df['LFGA2']/df['LFGA'])*2 + (df['LFGA3']/df['LFGA'])*3 ) + \
-                        df['LFTA']*( (df['LFGA2']/df['LFGA'])*2 + (df['LFGA3']/df['LFGA'])*3 ) - df['LFTM']
-    df['LDef_effort'] = df['WFGA2']*2 + df['WFGA3']*3 - \
-                        df['WFGM2']*2 - df['WFGM3']*3 - \
-                        df['WOR']*( (df['WFGA2']/df['WFGA'])*2 + (df['WFGA3']/df['WFGA'])*3 ) + \
-                        df['WFTA']*( (df['WFGA2']/df['WFGA'])*2 + (df['WFGA3']/df['WFGA'])*3 ) - df['WFTM']
-
-    df['WReb_opp'] = df['WDR'] / (df['LFGA'] - df['LFGM'])
-    df['LReb_opp'] = df['LDR'] / (df['WFGA'] - df['WFGM'])
-
-
-    #df['WTO_alone'] = df['WTO'] - df['LStl']
-    #df['LTO_alone'] = df['LTO'] - df['WStl']
+    stats = ['Score', 'FGM', 'FGA', 'FGM3', 'FGA3', 'FTM', 
+             'FTA', 'OR', 'DR', 'Ast', 'TO', 'Stl', 'Blk', 
+             'PF', 'FGM2', 'FGA2', 'Tot_Reb', 'FGM_no_ast', 
+             'DR_opportunity', 'OR_opportunity', 'possessions',
+             'off_rating', 'def_rating', 'shtg_opportunity', 
+             'TO_perposs', 'impact', 'True_shooting_perc'] # 'Def_effort' 
     
     for col in stats:
         df[col+'_diff'] = df['W'+col] - df['L'+col]
@@ -85,13 +83,13 @@ def process_details(data):
 def rolling_stats(data, streak=None):
     df = data.copy()
     
-    to_select = [col for col in df.columns if 'W' in col and '_perc' not in col]
+    to_select = [col for col in df.columns if col.startswith('W') and '_perc' not in col]
     to_select += [col for col in df.columns if '_diff' in col]
     df_W = df[['Season', 'DayNum', 'NumOT'] + to_select].copy()
     df_W.columns = df_W.columns.str.replace('W','')
     df_W['N_wins'] = 1
     
-    to_select = [col for col in df.columns if 'L' in col and '_perc' not in col]
+    to_select = [col for col in df.columns if col.startswith('L') and '_perc' not in col]
     to_select += [col for col in df.columns if '_diff' in col]
     df_L = df[['Season', 'DayNum', 'NumOT'] + to_select].copy()
     df_L.columns = df_L.columns.str.replace('L','')
@@ -171,18 +169,24 @@ def streaks(data):
 def full_stats(data):
     df = data.copy()
     
-    to_select = [col for col in df.columns if 'W' in col and '_perc' not in col]
-    to_select += [col for col in df.columns if '_diff' in col]
+    to_select = [col for col in df.columns if col.startswith('W') 
+                                             and '_perc' not in col 
+                                             and 'Loc' not in col]
+    to_select += [col for col in df.columns if '_diff' in col or '_advantage' in col]
     df_W = df[['Season', 'DayNum', 'NumOT'] + to_select].copy()
     df_W.columns = df_W.columns.str.replace('W','')
     df_W['N_wins'] = 1
     
-    to_select = [col for col in df.columns if 'L' in col and '_perc' not in col]
-    to_select += [col for col in df.columns if '_diff' in col]
+    to_select = [col for col in df.columns if col.startswith('L') 
+                                             and '_perc' not in col 
+                                             and 'Loc' not in col]
+    to_select += [col for col in df.columns if '_diff' in col or '_advantage' in col]
     df_L = df[['Season', 'DayNum', 'NumOT'] + to_select].copy()
     df_L.columns = df_L.columns.str.replace('L','')
     df_L = df_L.rename(columns={'Woc': 'Loc'})
     df_L[[col for col in df.columns if '_diff' in col]] = - df_L[[col for col in df.columns if '_diff' in col]]
+    for col in [col for col in df.columns if '_advantage' in col]:
+        df_L[col] = df_L[col].map({0:1, 1:0})
     df_L['N_wins'] = 0
     
     df = pd.concat([df_W, df_L])
@@ -190,8 +194,8 @@ def full_stats(data):
     #df.Loc = df.Loc.map({'H': 1, 'A': -1, 'N': 0})
     
     del df['DayNum']
-    del df['Loc']
     
+    not_use = ['NumOT', 'opp_FTA', 'opp_FGA']
     to_use = [col for col in df.columns if col != 'NumOT']
     
     means = df[to_use].groupby(['Season','TeamID'], as_index=False).mean()
@@ -202,8 +206,11 @@ def full_stats(data):
     sums['FGM3_perc'] = sums.FGM3 / sums.FGA3
     sums['FT_perc'] = sums.FTM / sums.FTA
     sums['FGM_no_ast_perc'] = sums.FGM_no_ast / sums.FGM
-    to_use = ['Season', 'TeamID', 'FGM_perc', 
-                 'FGM2_perc', 'FGM3_perc', 'FT_perc', 'FGM_no_ast_perc']
+    sums['True_shooting_perc'] = 0.5 * sums['Score'] / (sums['FGA'] + 0.475 * sums['FTA'])
+    sums['Opp_True_shooting_perc'] = 0.5 * sums['opp_score'] / (sums['opp_FGA'] + 0.475 * sums['opp_FTA'])
+    to_use = ['Season', 'TeamID', 'FGM_perc',
+              'FGM2_perc', 'FGM3_perc', 'FT_perc', 
+              'FGM_no_ast_perc', 'True_shooting_perc', 'Opp_True_shooting_perc']
     
     sums = sums[to_use].fillna(0)
     

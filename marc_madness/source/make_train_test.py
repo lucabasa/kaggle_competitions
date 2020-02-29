@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '2.0.0'
+__version__ = '2.1.0'
 __status__ = 'development'
 
 
@@ -111,6 +111,12 @@ def make_training_data(details, targets):
     for stat in stats:
         total['delta_'+stat] = total['T1_'+stat] - total['T2_'+stat]
         
+    try:
+        total['delta_off_edge'] = total['T1_off_rating'] - total['T2_def_rating']
+        total['delta_def_edge'] = total['T2_off_rating'] - total['T1_def_rating']
+    except KeyError:
+        pass
+        
     return total
 
 
@@ -138,12 +144,12 @@ def prepare_data(league):
     regular_stats = full_stats(reg)
     
     # Last 2 weeks stats
-    last2weeks = reg[reg.DayNum >= 118].copy()
-    last2weeks = full_stats(last2weeks)
-    last2weeks.columns = ['L2W_' + col for col in last2weeks]
-    last2weeks.rename(columns={'L2W_Season': 'Season', 'L2W_TeamID': 'TeamID'}, inplace=True)
+#     last2weeks = reg[reg.DayNum >= 118].copy()
+#     last2weeks = full_stats(last2weeks)
+#     last2weeks.columns = ['L2W_' + col for col in last2weeks]
+#     last2weeks.rename(columns={'L2W_Season': 'Season', 'L2W_TeamID': 'TeamID'}, inplace=True)
     
-    regular_stats = pd.merge(regular_stats, last2weeks, on=['Season', 'TeamID'], how='left')
+#     regular_stats = pd.merge(regular_stats, last2weeks, on=['Season', 'TeamID'], how='left')
     
     regular_stats = add_seed(seed, regular_stats)
     
