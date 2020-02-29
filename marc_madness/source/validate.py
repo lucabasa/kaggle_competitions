@@ -8,6 +8,8 @@ import numpy as np
 
 from scipy.interpolate import UnivariateSpline
 
+from sklearn.model_selection import GridSearchCV
+
 import source.utility as ut
 
 
@@ -45,7 +47,7 @@ def point_to_proba(oof, y_train, preds):
     return np.clip(spline_oof, 0.03, 0.97), np.clip(spline_test, 0.03, 0.97)
 
 
-def random_split(data, model, kfolds, target, test_size=0.2, predict_proba=False):
+def random_split(data, model, kfolds, target, test_size=0.2, predict_proba=False, tune=False, param_grid=None):
     
     train, test = ut.make_test(data, test_size=test_size, random_state=324)
     
@@ -54,12 +56,24 @@ def random_split(data, model, kfolds, target, test_size=0.2, predict_proba=False
     
     train, test = _clean_columns(train, test)
     
+    if tune:
+        if predict_proba:
+            grid = GridSearchCV(model, param_grid=param_grid, n_jobs=-1, 
+                                cv=5, scoring='neg_log_loss')
+        else:
+            grid = GridSearchCV(model, param_grid=param_grid, n_jobs=-1, 
+                                cv=5, scoring='neg_mean_absolute_error')
+        grid.fit(train, y_train)
+        model = grid.best_estimator_
+        print(grid.best_score_)
+        print(grid.best_params_)
+    
     fit_model, oof, imp_coef, predictions = _make_preds(train, y_train, test, model, kfolds, predict_proba)
     
     return fit_model, oof, predictions, imp_coef, train, y_train, test, y_test
 
 
-def yearly_split(data, model, kfolds, target, predict_proba=False):
+def yearly_split(data, model, kfolds, target, predict_proba=False, tune=False, param_grid=None):
     
     fit_model = {}
     oof = {}
@@ -81,6 +95,18 @@ def yearly_split(data, model, kfolds, target, predict_proba=False):
         y_test[yr] = test[yr][target]
 
         train[yr], test[yr] = _clean_columns(train[yr], test[yr])
+        
+        if tune:
+            if predict_proba:
+                grid = GridSearchCV(model, param_grid=param_grid, n_jobs=-1, 
+                                    cv=5, scoring='neg_log_loss')
+            else:
+                grid = GridSearchCV(model, param_grid=param_grid, n_jobs=-1, 
+                                    cv=5, scoring='neg_mean_absolute_error')
+            grid.fit(train[yr], y_train[yr])
+            model = grid.best_estimator_
+            print(grid.best_score_)
+            print(grid.best_params_)
         
         fit_model[yr], oof[yr], imp_coef[yr], predictions[yr] = _make_preds(train[yr], 
                                                                             y_train[yr], 
