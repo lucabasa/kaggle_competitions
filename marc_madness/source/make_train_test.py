@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '2.1.0'
+__version__ = '2.2.0'
 __status__ = 'development'
 
 
@@ -70,26 +70,56 @@ def _add_rank(total):
 
 def add_seed(seed_location, total):
     seed_data = pd.read_csv(seed_location)
+    seed_data['region'] = seed_data['Seed'].apply(lambda x: x[0])
     seed_data['Seed'] = seed_data['Seed'].apply(lambda x: int(x[1:3]))
     total = pd.merge(total, seed_data, how='left', on=['TeamID', 'Season'])
     return total
 
 
-def _add_stage(save_loc, total):
-    #if save_loc.endswith('/men/'):
-    total['stage'] = '68'
-    total.loc[(total.DayNum == 136) | (total.DayNum == 136), 'stage'] = '64'
-    total.loc[(total.DayNum == 138) | (total.DayNum == 139), 'stage'] = '32'
-    total.loc[(total.DayNum == 143) | (total.DayNum == 144), 'stage'] = '16'
-    total.loc[(total.DayNum == 145) | (total.DayNum == 146), 'stage'] = '8'
-    total.loc[(total.DayNum == 152), 'stage'] = '4'
-    total.loc[(total.DayNum == 154), 'stage'] = 'Final'
-
-    total = pd.get_dummies(total, columns=['stage'])
-
-    del total['stage_68']
-
-    return total
+def add_stage(data):
+    data.loc[(data.T1_region == 'W') & (data.T2_region == 'X'), 'stage'] = 'finalfour'
+    data.loc[(data.T1_region == 'X') & (data.T2_region == 'W'), 'stage'] = 'finalfour'
+    data.loc[(data.T1_region == 'Y') & (data.T2_region == 'Z'), 'stage'] = 'finalfour'
+    data.loc[(data.T1_region == 'Z') & (data.T2_region == 'Y'), 'stage'] = 'finalfour'
+    data.loc[(data.T1_region == 'W') & (data.T2_region.isin(['Y', 'Z'])), 'stage'] = 'final'
+    data.loc[(data.T1_region == 'X') & (data.T2_region.isin(['Y', 'Z'])), 'stage'] = 'final'
+    data.loc[(data.T1_region == 'Y') & (data.T2_region.isin(['W', 'X'])), 'stage'] = 'final'
+    data.loc[(data.T1_region == 'Z') & (data.T2_region.isin(['W', 'X'])), 'stage'] = 'final'
+    data.loc[(data.T1_region == data.T2_region) & (data.T1_Seed + data.T2_Seed == 17), 'stage'] = 'Round1'
+    
+    fil = data.stage.isna()
+    
+    data.loc[fil & (data.T1_Seed.isin([1, 16])) & (data.T2_Seed.isin([8, 9])), 'stage'] = 'Round2'
+    data.loc[fil & (data.T1_Seed.isin([8, 9])) & (data.T2_Seed.isin([1, 16])), 'stage'] = 'Round2'
+    data.loc[fil & (data.T1_Seed.isin([5, 12])) & (data.T2_Seed.isin([4, 13])), 'stage'] = 'Round2'
+    data.loc[fil & (data.T1_Seed.isin([4, 13])) & (data.T2_Seed.isin([5, 12])), 'stage'] = 'Round2'
+    data.loc[fil & (data.T1_Seed.isin([6, 11])) & (data.T2_Seed.isin([3, 14])), 'stage'] = 'Round2'
+    data.loc[fil & (data.T1_Seed.isin([3, 14])) & (data.T2_Seed.isin([6, 11])), 'stage'] = 'Round2'
+    data.loc[fil & (data.T1_Seed.isin([7, 10])) & (data.T2_Seed.isin([2, 15])), 'stage'] = 'Round2'
+    data.loc[fil & (data.T1_Seed.isin([2, 15])) & (data.T2_Seed.isin([7, 10])), 'stage'] = 'Round2'
+    
+    fil = data.stage.isna()
+    
+    data.loc[fil & (data.T1_Seed.isin([1, 16, 8, 9])) & (data.T2_Seed.isin([4, 5, 12, 13])), 'stage'] = 'Round3'
+    data.loc[fil & (data.T1_Seed.isin([4, 5, 12, 13])) & (data.T2_Seed.isin([1, 16, 8, 9])), 'stage'] = 'Round3'
+    data.loc[fil & (data.T1_Seed.isin([3, 6, 11, 14])) & (data.T2_Seed.isin([2, 7, 10, 15])), 'stage'] = 'Round3'
+    data.loc[fil & (data.T1_Seed.isin([2, 7, 10, 15])) & (data.T2_Seed.isin([3, 6, 11, 14])), 'stage'] = 'Round3'
+    
+    fil = data.stage.isna()
+    
+    data.loc[fil & (data.T1_Seed.isin([1, 16, 8, 9, 4, 5, 12, 13])) & 
+             (data.T2_Seed.isin([3, 6, 11, 14, 2, 7, 10, 15])), 'stage'] = 'Round4'
+    data.loc[fil & (data.T1_Seed.isin([3, 6, 11, 14, 2, 7, 10, 15])) & 
+             (data.T2_Seed.isin([1, 16, 8, 9, 4, 5, 12, 13])), 'stage'] = 'Round4'
+    
+    data.loc[data.stage.isna(), 'stage'] = 'impossible'
+    
+    data = pd.get_dummies(data, columns=['stage'])
+    
+    del data['T1_region']
+    del data['T2_region']
+    
+    return data
 
 
 def make_training_data(details, targets):
@@ -106,7 +136,7 @@ def make_training_data(details, targets):
     if total.isnull().any().any():
         raise ValueError('Something went wrong')
         
-    stats = [col[3:] for col in total.columns if 'T1_' in col]
+    stats = [col[3:] for col in total.columns if 'T1_' in col and 'region' not in col]
 
     for stat in stats:
         total['delta_'+stat] = total['T1_'+stat] - total['T2_'+stat]
@@ -161,11 +191,13 @@ def prepare_data(league):
     
     playoff_stats = add_seed(seed, playoff_stats)
     
-    # Target data generation Todo: this is up to 2018
+    # Target data generation 
     target_data = pd.read_csv(playoff_compact)
     target_data = make_teams_target(target_data, league)
     
     all_reg = make_training_data(regular_stats, target_data)
+    all_reg = all_reg[all_reg.DayNum >= 136]  # remove pre tourney 
+    all_reg = add_stage(all_reg)
     all_reg.to_csv(save_loc + 'training_data.csv', index=False)
     
     playoff_stats.to_csv(save_loc + 'playoff_stats.csv', index=False)
