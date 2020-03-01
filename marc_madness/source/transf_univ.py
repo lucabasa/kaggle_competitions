@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.2.3'
+__version__ = '1.3.0'
 __status__ = 'development'
 
 
@@ -10,6 +10,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.pipeline import FeatureUnion
 from sklearn.preprocessing import StandardScaler, RobustScaler
 from sklearn.impute import SimpleImputer
+from sklearn.feature_selection import SelectKBest, f_classif, f_regression
 
 import warnings
 
@@ -69,7 +70,7 @@ class df_scaler(TransformerMixin, BaseEstimator):
         self.scl = None
         self.scale_ = None
         self.method = method
-        if self.method == 'sdandard':
+        if self.method == 'standard':
             self.mean_ = None
         elif method == 'robust':
             self.center_ = None
@@ -180,3 +181,33 @@ class FeatureUnion_df(TransformerMixin, BaseEstimator):
 
     def get_params(self, deep=True):  # necessary to well behave in GridSearch
         return self.feat_un.get_params(deep=deep)
+
+    
+class selector(BaseEstimator, TransformerMixin):
+    def __init__(self, mode='clfs', k=20):
+        self.mode = mode
+        self.k = k
+        self.sel = None
+        self.columns = None
+        
+    def fit(self, X, y):
+        if self.mode == 'clfs':
+            self.sel = SelectKBest(f_classif, self.k)
+        elif self.mode == 'reg':
+            self.sel = SelectKBest(f_regression, self.k)
+        else:
+            raise AttributeError('The mode can be either clfs or reg')
+            
+        self.sel.fit(X, y)
+        return self
+    
+    def transform(self, X):
+        X_sel = self.sel.transform(X)
+        X_sel = pd.DataFrame(X_sel, 
+                             index=X.index, 
+                             columns=X.columns[self.sel.get_support()])
+        self.columns = X_sel.columns
+        return X_sel
+    
+    def get_feature_names(self):
+        return list(self.columns)    

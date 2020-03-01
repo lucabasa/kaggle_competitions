@@ -298,9 +298,11 @@ def report_points(train, test, y_train, y_test, oof, preds, plot=True):
     print(f'Unsure test: \t\t\t {n_unsure_test}%')
 
     
-def report_victory(y_train, y_test, oof, preds, probs=True):
+def report_victory(y_train, y_test, oof, preds, probs=True, plot=True):
     
     if probs:
+        oof = np.clip(oof, 0.03, 0.97)
+        preds = np.clip(preds, 0.03, 0.97)
         acc_oof = round(accuracy_score(y_true=y_train, y_pred=(oof>0.5).astype(int)),4)
         acc_test = round(accuracy_score(y_true=y_test, y_pred=(preds>0.5).astype(int)),4)
         auc_oof = round(roc_auc_score(y_true=y_train, y_score=(oof>0.5).astype(int)),4)
@@ -310,7 +312,8 @@ def report_victory(y_train, y_test, oof, preds, probs=True):
         logloss_oof = round(log_loss(y_true=y_train, y_pred=oof), 4)
         logloss_test = round(log_loss(y_true=y_test, y_pred=preds), 4)
         
-        plot_pred_prob(oof, preds, y_train, y_test)
+        if plot:
+            plot_pred_prob(oof, preds, y_train, y_test)
     
     print(f'Accuracy train: \t\t {acc_oof}')
     print(f'Accuracy test: \t\t\t {acc_test}')
@@ -322,7 +325,7 @@ def report_victory(y_train, y_test, oof, preds, probs=True):
     print(f'Unsure test: \t\t\t {n_unsure_test}%')    
     
 
-def yearly_wrapper(train, test, y_train, y_test, oof, preds, min_yr=2015):
+def yearly_wrapper(train, test, y_train, y_test, oof, preds, min_yr=2015, points=True):
     y_train_total = []
     y_test_total = []
     oof_total = []
@@ -332,7 +335,10 @@ def yearly_wrapper(train, test, y_train, y_test, oof, preds, min_yr=2015):
     for yr in train.keys():
         print(yr)
         print('\n')
-        report_points(train[yr], test[yr], y_train[yr], y_test[yr], oof[yr], preds[yr], plot=False)
+        if points:
+            report_points(train[yr], test[yr], y_train[yr], y_test[yr], oof[yr], preds[yr], plot=False)
+        else:
+            report_victory(y_train[yr], y_test[yr], oof[yr], preds[yr], probs=True, plot=False)
         print('\n')
         print('_'*40)
         print('\n')
@@ -352,5 +358,8 @@ def yearly_wrapper(train, test, y_train, y_test, oof, preds, min_yr=2015):
     full_test = pd.concat(full_test, ignore_index=True)
     oof_total = pd.Series(oof_total)
     preds_total = pd.Series(preds_total)
-    report_points(full_train, full_test, y_train_total, y_test_total, oof_total, preds_total, plot=True)
+    if points:
+        report_points(full_train, full_test, y_train_total, y_test_total, oof_total, preds_total, plot=True)
+    else:
+        report_victory(y_train_total, y_test_total, oof_total, preds_total, probs=True, plot=True)
     
