@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '2.2.0'
+__version__ = '2.4.0'
 __status__ = 'development'
 
 
@@ -54,16 +54,16 @@ def make_teams_target(data, league):
     return df
 
 
-def _add_rank(total):
-    ranks = pd.read_csv('raw_data/mens-machine-learning-competition-2019/MasseyOrdinals.csv')
-    ranks = ranks[['Season', 'RankingDayNum', 
-           'TeamID', 'OrdinalRank']].groupby(['Season', 'RankingDayNum','TeamID']).mean().reset_index()
+def add_rank(rank_location, total):
+    ranks = pd.read_csv(rank_location)
+    ranks = ranks[~(ranks.SystemName.isin(['AP', 'USA', 'DES', 'LYN', 'ACU', 
+                                           'TRX', 'D1A', 'JNG', 'BNT']))].copy()
+    ranks = ranks.groupby(['Season', 'TeamID', 'RankingDayNum'], as_index=False).OrdinalRank.mean()
     ranks = ranks[ranks.RankingDayNum == 133]
-    ranks = ranks.rename(columns={'TeamID': 'Team1'})
-    total = pd.merge(total, ranks[['Season', 'Team1', 'OrdinalRank']], on=['Season', 'Team1'], how='left')
-    ranks = ranks.rename(columns={'Team1': 'Team2'})
-    total = pd.merge(total, ranks[['Season', 'Team2', 'OrdinalRank']], on=['Season', 'Team2'], how='left')
-    total = total.rename(columns={'OrdinalRank_x': 'T1_rank', 'OrdinalRank_y': 'T2_rank'})
+    del ranks['RankingDayNum']
+
+    total = pd.merge(total, ranks.rename(columns={'OrdinalRank': 'Rank'}), 
+                     on=['Season', 'TeamID'], how='left')
 
     return total
 
@@ -158,6 +158,7 @@ def prepare_data(league):
         playoff = 'data/raw_women/WDataFiles_Stage1/WNCAATourneyDetailedResults.csv'
         playoff_compact = 'data/raw_women/WDataFiles_Stage1/WNCAATourneyCompactResults.csv'
         seed = 'data/raw_women/WDataFiles_Stage1/WNCAATourneySeeds.csv'
+        rank = None
         save_loc = 'data/processed_women/'
     else:
         regular_season = 'data/raw_men/MDataFiles_Stage1/MRegularSeasonDetailedResults.csv'
@@ -169,7 +170,7 @@ def prepare_data(league):
     
     # Season stats
     reg = pd.read_csv(regular_season)
-    reg = process_details(reg)
+    reg = process_details(reg, rank)
     reg.to_csv(save_loc + 'game_details_regular_extended.csv', index=False)
     regular_stats = full_stats(reg)
     
@@ -181,7 +182,7 @@ def prepare_data(league):
     
 #     regular_stats = pd.merge(regular_stats, last2weeks, on=['Season', 'TeamID'], how='left')
     
-    regular_stats = add_seed(seed, regular_stats)
+    regular_stats = add_seed(seed, regular_stats)    
     
     # Playoff stats
     play = pd.read_csv(playoff)
@@ -190,6 +191,10 @@ def prepare_data(league):
     playoff_stats = full_stats(play)
     
     playoff_stats = add_seed(seed, playoff_stats)
+    
+    if rank:
+        regular_stats = add_rank(rank, regular_stats)
+        playoff_stats = add_rank(rank, playoff_stats)
     
     # Target data generation 
     target_data = pd.read_csv(playoff_compact)
