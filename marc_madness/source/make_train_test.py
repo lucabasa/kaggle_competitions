@@ -154,18 +154,18 @@ def prepare_data(league):
     save_loc = 'processed_data/' + league + '/'
 
     if league == 'women':
-        regular_season = 'data/raw_women/WDataFiles_Stage1/WRegularSeasonDetailedResults.csv'
-        playoff = 'data/raw_women/WDataFiles_Stage1/WNCAATourneyDetailedResults.csv'
-        playoff_compact = 'data/raw_women/WDataFiles_Stage1/WNCAATourneyCompactResults.csv'
-        seed = 'data/raw_women/WDataFiles_Stage1/WNCAATourneySeeds.csv'
+        regular_season = 'data/raw_women/WDataFiles_Stage2/WRegularSeasonDetailedResults.csv'
+        playoff = 'data/raw_women/WDataFiles_Stage2/WNCAATourneyDetailedResults.csv'
+        playoff_compact = 'data/raw_women/WDataFiles_Stage2/WNCAATourneyCompactResults.csv'
+        seed = 'data/raw_women/WDataFiles_Stage2/WNCAATourneySeeds.csv'
         rank = None
         save_loc = 'data/processed_women/'
     else:
-        regular_season = 'data/raw_men/MDataFiles_Stage1/MRegularSeasonDetailedResults.csv'
-        playoff = 'data/raw_men/MDataFiles_Stage1/MNCAATourneyDetailedResults.csv'
-        playoff_compact = 'data/raw_men/MDataFiles_Stage1/MNCAATourneyCompactResults.csv'
-        seed = 'data/raw_men/MDataFiles_Stage1/MNCAATourneySeeds.csv'
-        rank = 'data/raw_men/MDataFiles_Stage1/MMasseyOrdinals.csv'
+        regular_season = 'data/raw_men/MDataFiles_Stage2/MRegularSeasonDetailedResults.csv'
+        playoff = 'data/raw_men/MDataFiles_Stage2/MNCAATourneyDetailedResults.csv'
+        playoff_compact = 'data/raw_men/MDataFiles_Stage2/MNCAATourneyCompactResults.csv'
+        seed = 'data/raw_men/MDataFiles_Stage2/MNCAATourneySeeds.csv'
+        rank = 'data/raw_men/MDataFiles_Stage2/MMasseyOrdinals.csv'
         save_loc = 'data/processed_men/'
     
     # Season stats
