@@ -1,12 +1,12 @@
 __author__ = 'lucabasa'
-__version__ = '2.4.0'
+__version__ = '3.0.0'
 __status__ = 'development'
 
 
 import pandas as pd 
 import numpy as np 
 
-from source.aggregated_stats import process_details, full_stats
+from source.aggregated_stats import process_details, full_stats, rolling_stats
 
 
 def make_teams_target(data, league):
@@ -208,6 +208,63 @@ def prepare_data(league):
     playoff_stats.to_csv(save_loc + 'playoff_stats.csv', index=False)
     
     return all_reg
+
+
+def prepare_competitive(league):
+    if league == 'women':
+        regular_season = 'data/raw_women/WDataFiles_Stage2/WRegularSeasonDetailedResults.csv'
+        playoff = 'data/raw_women/WDataFiles_Stage2/WNCAATourneyDetailedResults.csv'
+        rank = None
+        season_info = 'data/raw_women/WDataFiles_Stage2/WSeasons.csv'
+        events_data = 'data/processed_women/events.csv'
+        save_loc = 'data/processed_women/'
+    else:
+        regular_season = 'data/raw_men/MDataFiles_Stage2/MRegularSeasonDetailedResults.csv'
+        playoff = 'data/raw_men/MDataFiles_Stage2/MNCAATourneyDetailedResults.csv'
+        playoff_compact = 'data/raw_men/MDataFiles_Stage2/MNCAATourneyCompactResults.csv'
+        rank = 'data/raw_men/MDataFiles_Stage2/MMasseyOrdinals.csv'
+        season_info = 'data/raw_men/MDataFiles_Stage2/MSeasons.csv'
+        events_data = 'data/processed_men/events.csv'
+        save_loc = 'data/processed_men/'
+        
+    reg = pd.read_csv(regular_season)
+    reg = process_details(reg, rank)
+    play = pd.read_csv(playoff)
+    play = process_details(play)
+    full = pd.concat([reg, play])
+    events = pd.read_csv(events_data)
+    
+    to_use = [col for col in events if not col.endswith('_game') and 
+              'FinalScore' not in col and 
+              'n_OT' not in col and 
+              '_difference' not in col]
+    full = pd.merge(full, events[to_use], on=['Season', 'DayNum', 'WTeamID', 'LTeamID'])
+    
+    full.to_csv(save_loc + 'events_extended.csv', index=False)
+    
+    rolling = rolling_stats(full, season_info)
+    
+    rolling.to_csv(save_loc + 'rolling_stats.csv', index=False)
+    
+    competitive = events[['Season', 'DayNum', 'WTeamID', 'LTeamID', 
+                          'tourney', 'Final_difference', '3mins_difference', 
+                          'game_lc', 'half2_lc', 'crunchtime_lc', 'competitive']].copy()
+    
+    tmp = rolling.copy()
+    tmp.columns = ['Season'] + \
+                ['W'+col for col in tmp.columns if col not in ['Season', 'DayNum']] + ['DayNum']
+    
+    competitive = pd.merge(competitive, tmp, on=['Season', 'DayNum', 'WTeamID'])
+    
+    tmp = rolling.copy()
+    tmp.columns = ['Season'] + \
+                ['L'+col for col in tmp.columns if col not in ['Season', 'DayNum']] + ['DayNum']
+    
+    competitive = pd.merge(competitive, tmp, on=['Season', 'DayNum', 'LTeamID'])
+    
+    competitive.to_csv(save_loc + 'competitive.csv', index=False)
+    
+    return competitive
 
 
 if __name__=='__main__':
