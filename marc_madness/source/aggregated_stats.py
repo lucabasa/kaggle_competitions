@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '2.0.0'
+__version__ = '3.0.0'
 __status__ = 'development'
 
 
@@ -188,5 +188,91 @@ def full_stats(data):
     stats_tot = pd.merge(stats_tot, OT_perc, on=['Season', 'TeamID'], how='left')
     stats_tot['OT_win_perc'] = stats_tot['OT_win_perc'].fillna(0)
   
+    return stats_tot
+
+
+def add_days(data, info, date=True):
+    df = data.copy()
+    seasons = pd.read_csv(info)
+    
+    df = pd.merge(df, seasons[['Season', 'DayZero']], on='Season')
+    df['DayZero'] = pd.to_datetime(df.DayZero)
+    
+    if date:
+        df['GameDay'] = df.apply(lambda x: x['DayZero'] + pd.offsets.DateOffset(days=x['DayNum']), 1)
+    else:
+        df['DayNum'] = (df['GameDay'] - df['DayZero']).dt.days
+    
+    del df['DayZero']
+    
+    return df
+
+
+def rolling_stats(data, season_info, window='30d'):
+    df = data.copy()
+
+    df = add_days(df, season_info)
+
+    to_select = [col for col in df.columns if col.startswith('W') 
+                                                 and '_perc' not in col 
+                                                 and 'Loc' not in col]
+    to_select += [col for col in df.columns if '_diff' in col or '_advantage' in col]
+    df_W = df[['Season', 'GameDay', 'NumOT', 
+               'game_lc', 'half2_lc', 'crunchtime_lc'] + to_select].copy()
+    df_W.columns = df_W.columns.str.replace('W','')
+    df_W['N_wins'] = 1
+
+    to_select = [col for col in df.columns if col.startswith('L') 
+                                             and '_perc' not in col 
+                                             and 'Loc' not in col]
+    to_select += [col for col in df.columns if '_diff' in col or '_advantage' in col]
+    df_L = df[['Season', 'GameDay', 'NumOT', 
+               'game_lc', 'half2_lc', 'crunchtime_lc'] + to_select].copy()
+    df_L.columns = df_L.columns.str.replace('L','')
+    df_L[[col for col in df.columns if '_diff' in col]] = - df_L[[col for col in df.columns if '_diff' in col]]
+    for col in [col for col in df.columns if '_advantage' in col]:
+        df_L[col] = df_L[col].map({0:1, 1:0})
+    df_L['N_wins'] = 0
+    df_L['OT_win'] = 0
+    df_L['Away'] = 0
+    if 'top_team' in df_W.columns:
+        df_L['top_team'] = 0
+        df_L['upset'] = 0
+
+    df = pd.concat([df_W, df_L], sort=False)
+
+    not_use = ['NumOT', 'Season', 'TeamID']
+    to_use = [col for col in df.columns if col not in not_use]
+
+    means = df.groupby(['Season', 'TeamID'])[to_use].rolling(window, on='GameDay', 
+                                                           min_periods=1, closed='left').mean()
+    means = means.dropna()
+    means = means.reset_index()
+    del means['level_2']
+
+    sums = df.groupby(['Season', 'TeamID'])[to_use].rolling(window, on='GameDay', 
+                                                      min_periods=1, closed='left').sum()
+    sums = sums.reset_index()
+    del sums['level_2']
+    
+    sums['FGM_perc'] = sums.FGM / sums.FGA
+    sums['FGM2_perc'] = sums.FGM2 / sums.FGA2
+    sums['FGM3_perc'] = sums.FGM3 / sums.FGA3
+    sums['FT_perc'] = sums.FTM / sums.FTA
+    sums['FGM_no_ast_perc'] = sums.FGM_no_ast / sums.FGM
+    sums['True_shooting_perc'] = 0.5 * sums['Score'] / (sums['FGA'] + 0.475 * sums['FTA'])
+    sums['Opp_True_shooting_perc'] = 0.5 * sums['opp_score'] / (sums['opp_FGA'] + 0.475 * sums['opp_FTA'])
+    
+    to_use = ['Season', 'TeamID', 'GameDay', 'FGM_perc',
+              'FGM2_perc', 'FGM3_perc', 'FT_perc', 
+              'FGM_no_ast_perc', 'True_shooting_perc', 'Opp_True_shooting_perc']
+
+    sums = sums[to_use].fillna(0)
+
+    stats_tot = pd.merge(means, sums, on=['Season', 'TeamID', 'GameDay'])
+
+    stats_tot = add_days(stats_tot, season_info, date=False)
+    del stats_tot['GameDay']
+    
     return stats_tot
 
