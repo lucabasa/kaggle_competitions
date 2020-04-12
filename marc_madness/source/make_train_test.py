@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '3.0.0'
+__version__ = '3.0.1'
 __status__ = 'development'
 
 
@@ -247,7 +247,7 @@ def prepare_competitive(league):
     rolling.to_csv(save_loc + 'rolling_stats.csv', index=False)
     
     competitive = events[['Season', 'DayNum', 'WTeamID', 'LTeamID', 
-                          'tourney', 'Final_difference', '3mins_difference', 
+                          'tourney', 'Final_difference', 'Halftime_difference', '3mins_difference', 
                           'game_lc', 'half2_lc', 'crunchtime_lc', 'competitive']].copy()
     
     tmp = rolling.copy()

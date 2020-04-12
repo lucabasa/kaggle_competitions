@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.1.0'
+__version__ = '1.1.1'
 __status__ = 'development'
 
 
@@ -207,7 +207,7 @@ def make_competitive(data):
     df = data.copy()
     
 
-    fil = ((df.Final_difference < 4) | (df['3mins_difference'] < 3) | (df.n_OT > 0) | 
+    fil = ((df.Final_difference < 4) | (abs(df['3mins_difference']) < 3) | (df.n_OT > 0) | 
          (df.game_lc > 20) | (df.half2_lc > 10) | (df.crunchtime_lc > 2))
     
     df['competitive'] = np.where(fil, 1, 0)
