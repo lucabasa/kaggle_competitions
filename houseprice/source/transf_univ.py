@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.2.2'
+__version__ = '1.2.3'
 __status__ = 'development'
 
 
@@ -89,7 +89,7 @@ class df_scaler(TransformerMixin, BaseEstimator):
         self.columns = X.columns
         return Xscaled
     
-    def get_feature_names(self):
+    def get_features_name(self):
         return list(self.columns)
 
 
@@ -133,7 +133,7 @@ class dummify(TransformerMixin, BaseEstimator):
                 X = self.match_columns(X)
         else:
             self.columns = X.columns
-        return X
+        return X[self.columns]
     
     def get_features_name(self):
         return self.columns

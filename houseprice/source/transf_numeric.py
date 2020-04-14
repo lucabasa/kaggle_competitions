@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.1.0'
+__version__ = '1.1.1'
 __status__ = 'development'
 
 
@@ -81,5 +81,6 @@ class tr_numeric(BaseEstimator, TransformerMixin):
         return X
     
 
-    def get_features_name(self):
+    def get_feature_names(self):
         return self.columns
+        
