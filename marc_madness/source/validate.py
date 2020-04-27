@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.3.0'
+__version__ = '1.4.0'
 __status__ = 'development'
 
 
@@ -14,7 +14,7 @@ import source.utility as ut
 
 
 def _clean_columns(train, test):
-    for col in ['target', 'target_points', 'ID', 'DayNum', 'Team1', 'Team2', 'Season']:
+    for col in ['target', 'target_points', 'ID', 'DayNum', 'Team1', 'Team2', 'Season', 'competitive', 'competitive_score']:
         try:
             del train[col]
             del test[col]
