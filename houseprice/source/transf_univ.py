@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.2.3'
+__version__ = '1.3.0'
 __status__ = 'development'
 
 
@@ -10,6 +10,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.pipeline import FeatureUnion
 from sklearn.preprocessing import StandardScaler, RobustScaler
 from sklearn.impute import SimpleImputer
+from sklearn.feature_selection import SelectKBest, f_classif, f_regression
 
 import warnings
 
@@ -42,6 +43,7 @@ class df_imputer(TransformerMixin, BaseEstimator):
         self.strategy = strategy
         self.imp = None
         self.statistics_ = None
+        self.columns = None
 
     def fit(self, X, y=None):
         self.imp = SimpleImputer(strategy=self.strategy)
@@ -53,7 +55,11 @@ class df_imputer(TransformerMixin, BaseEstimator):
         # assumes X is a DataFrame
         Ximp = self.imp.transform(X)
         Xfilled = pd.DataFrame(Ximp, index=X.index, columns=X.columns)
+        self.columns = Xfilled.columns
         return Xfilled
+    
+    def get_feature_names(self):
+        return list(self.columns)
 
     
 class df_scaler(TransformerMixin, BaseEstimator):
@@ -64,7 +70,7 @@ class df_scaler(TransformerMixin, BaseEstimator):
         self.scl = None
         self.scale_ = None
         self.method = method
-        if self.method == 'sdandard':
+        if self.method == 'standard':
             self.mean_ = None
         elif method == 'robust':
             self.center_ = None
@@ -89,7 +95,7 @@ class df_scaler(TransformerMixin, BaseEstimator):
         self.columns = X.columns
         return Xscaled
     
-    def get_features_name(self):
+    def get_feature_names(self):
         return list(self.columns)
 
 
@@ -124,7 +130,7 @@ class dummify(TransformerMixin, BaseEstimator):
             warnings.warn('The dummies in this set do not match the ones in the train set, we corrected the issue.',
                          UserWarning)
             
-        return X
+        return X[self.columns]  # preserve original order to avoid problems with some algorithms
     
     def transform(self, X):
         X = pd.get_dummies(X, drop_first=self.drop_first)
@@ -133,12 +139,12 @@ class dummify(TransformerMixin, BaseEstimator):
                 X = self.match_columns(X)
         else:
             self.columns = X.columns
-        return X[self.columns]
+        return X
     
-    def get_features_name(self):
+    def get_feature_names(self):
         return self.columns
 
- 
+
 class FeatureUnion_df(TransformerMixin, BaseEstimator):
     '''
     Wrapper of FeatureUnion but returning a Dataframe, 
@@ -166,7 +172,7 @@ class FeatureUnion_df(TransformerMixin, BaseEstimator):
         columns = []
         
         for trsnf in self.transformer_list:
-            cols = trsnf[1].steps[-1][1].get_features_name()
+            cols = trsnf[1].steps[-1][1].get_feature_names()
             columns += list(cols)
 
         X_tr = pd.DataFrame(X_tr, index=X.index, columns=columns)
@@ -175,3 +181,33 @@ class FeatureUnion_df(TransformerMixin, BaseEstimator):
 
     def get_params(self, deep=True):  # necessary to well behave in GridSearch
         return self.feat_un.get_params(deep=deep)
+
+    
+class selector(BaseEstimator, TransformerMixin):
+    def __init__(self, mode='clfs', k=20):
+        self.mode = mode
+        self.k = k
+        self.sel = None
+        self.columns = None
+        
+    def fit(self, X, y):
+        if self.mode == 'clfs':
+            self.sel = SelectKBest(f_classif, self.k)
+        elif self.mode == 'reg':
+            self.sel = SelectKBest(f_regression, self.k)
+        else:
+            raise AttributeError('The mode can be either clfs or reg')
+            
+        self.sel.fit(X, y)
+        return self
+    
+    def transform(self, X):
+        X_sel = self.sel.transform(X)
+        X_sel = pd.DataFrame(X_sel, 
+                             index=X.index, 
+                             columns=X.columns[self.sel.get_support()])
+        self.columns = X_sel.columns
+        return X_sel
+    
+    def get_feature_names(self):
+        return list(self.columns)    
