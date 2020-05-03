@@ -1,7 +1,8 @@
-data/*
-.ipynb_checkpoints/*
-submissions/*
-plots/*
-__pycache__/*
-oof_pred/*
-Notebooks/.ipynb_checkpoints/*
+data/
+.ipynb_checkpoints/
+submissions/
+plots/
+__pycache__/
+oof_pred/
+hp/
+
