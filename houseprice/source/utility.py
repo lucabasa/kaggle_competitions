@@ -1,12 +1,12 @@
 __author__ = 'lucabasa'
-__version__ = '1.1.1'
+__version__ = '1.3.1'
 __status__ = 'development'
 
 
 import pandas as pd
 import numpy as np
 
-from sklearn.model_selection import StratifiedShuffleSplit, GridSearchCV, RandomizedSearchCV
+from sklearn.model_selection import StratifiedShuffleSplit, GridSearchCV, RandomizedSearchCV, train_test_split
 
 import source.report as rp
 
@@ -24,10 +24,13 @@ def make_test(train, test_size, random_state, strat_feat=None):
             train_set = train.loc[train_index]
             test_set = train.loc[test_index]
             
+    else:
+        train_set, test_set = train_test_split(train, test_size=test_size, random_state=random_state)
+            
     return train_set, test_set
 
 
-def cv_score(df_train, y_train, kfolds, pipeline, imp_coef=False):
+def cv_score(df_train, y_train, kfolds, pipeline, imp_coef=False, predict_proba=False):
     '''
     Train and test a pipeline in kfold cross validation
     Returns the oof predictions for the entire train set and a dataframe with the
@@ -49,13 +52,16 @@ def cv_score(df_train, y_train, kfolds, pipeline, imp_coef=False):
         val_target = y_train.iloc[test_index].values.ravel()
         
         pipeline.fit(trn_data, trn_target)
-
-        oof[test_index] = pipeline.predict(val_data).ravel()
+        
+        if predict_proba:
+            oof[test_index] = pipeline.predict_proba(val_data)[:,1]
+        else:
+            oof[test_index] = pipeline.predict(val_data).ravel()
 
         if imp_coef:
             try:
                 fold_df = rp.get_coef(pipeline)
-            except AttributeError:
+            except (AttributeError, KeyError):
                 fold_df = rp.get_feature_importance(pipeline)
                 
             fold_df['fold'] = n_fold + 1
@@ -81,10 +87,10 @@ def grid_search(data, target, estimator, param_grid, scoring, cv, random=False):
     
     if random:
         grid = RandomizedSearchCV(estimator=estimator, param_distributions=param_grid, cv=cv, scoring=scoring, 
-                                  n_iter=random, n_jobs=-1, random_state=434, iid=False)
+                                  n_iter=random, n_jobs=-1, random_state=434, iid=False, return_train_score=True)
     else:
         grid = GridSearchCV(estimator=estimator, param_grid=param_grid, 
-                            cv=cv, scoring=scoring, n_jobs=-1, return_train_score=False)
+                            cv=cv, scoring=scoring, n_jobs=-1, return_train_score=True)
     
     pd.options.mode.chained_assignment = None  # turn on and off a warning of pandas
     tmp = data.copy()
@@ -98,6 +104,6 @@ def grid_search(data, target, estimator, param_grid, scoring, cv, random=False):
     times = [col for col in result.columns if col.endswith('_time')]
     params = [col for col in result.columns if col.startswith('param_')]
     
-    result = result[params + ['mean_test_score', 'std_test_score'] + times]
+    result = result[params + ['mean_train_score', 'std_train_score', 'mean_test_score', 'std_test_score'] + times]
     
     return result, grid.best_params_, grid.best_estimator_
