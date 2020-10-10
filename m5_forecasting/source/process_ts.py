@@ -88,6 +88,8 @@ def lag_feats(data, lags):
     
     for lag in lags:
         df[f'lag_{lag}'] = df.groupby('id').sales.shift(lag)
+        
+    df = reduce_mem_usage(df)
     
     return df
 
