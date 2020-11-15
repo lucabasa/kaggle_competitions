@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 
 import numpy as np
 import pandas as pd
@@ -11,6 +11,7 @@ import torch.optim as optim
 
 from source.torch_utils import seed_everything, MoADataset, TestDataset, train_fn, valid_fn, inference_fn
 from source.process import add_pca, var_tr, process_data, scale_data
+from source.analyze import plot_learning
 
 
 
@@ -130,9 +131,10 @@ def run_training(train, test, target_cols, target,
     loss_fn = nn.BCEWithLogitsLoss()
     
     early_step = 0
-    
     oof = np.zeros((len(train), target.iloc[:, 1:].shape[1]))
     best_loss = np.inf
+    train_losses = []
+    valid_losses = []
     
     print(f"FOLD: {fold}, n_features={num_features}")
     
@@ -141,6 +143,9 @@ def run_training(train, test, target_cols, target,
         train_loss = train_fn(model, optimizer,scheduler, loss_fn, trainloader, device)
         valid_loss, valid_preds = valid_fn(model, loss_fn, validloader, device)
         print(f"EPOCH: {epoch}, train_loss: {train_loss}, valid_loss: {valid_loss}")
+        
+        train_losses.append(train_loss)
+        valid_losses.append(valid_loss)
         
         if valid_loss < best_loss:
             
@@ -153,7 +158,8 @@ def run_training(train, test, target_cols, target,
             early_step += 1
             if early_step >= early_stopping_steps:
                 break
-            
+    
+    plot_learning(train_losses, valid_losses, fold)
     
     #--------------------- PREDICTION---------------------
     x_test = test_df[feature_cols].values
