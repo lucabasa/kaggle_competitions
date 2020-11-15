@@ -146,7 +146,7 @@ def run_training(train, test, target_cols, target,
             
             best_loss = valid_loss
             oof[val_idx] = valid_preds
-            torch.save(model.state_dict(), f"FOLD{fold}_.pth")
+            torch.save(model.state_dict(), f"models/FOLD{fold}_.pth")
             early_step = 0
         
         elif early_stopping_steps > 0:
@@ -166,7 +166,7 @@ def run_training(train, test, target_cols, target,
         hidden_size=hidden_size,
     )
     
-    model.load_state_dict(torch.load(f"FOLD{fold}_.pth"))
+    model.load_state_dict(torch.load(f"models/FOLD{fold}_.pth"))
     model.to(device)
     
     predictions = np.zeros((len(test_df), target.iloc[:, 1:].shape[1]))
