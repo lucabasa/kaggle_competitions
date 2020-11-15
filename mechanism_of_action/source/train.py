@@ -45,23 +45,8 @@ class Model(nn.Module):
         return x
     
     
-def run_training(train, test, target_cols, target, 
-                 g_comp, c_comp, g_feat, c_feat, thr, 
-                 batch_size, hidden_size, device, early_stopping_steps, learning_rate, epochs, weight_decay,
-                 fold, seed):
-    
-    test_df = test.copy()
-    
-    seed_everything(seed)
-    
-    trn_idx = train[train['kfold'] != fold].index
-    val_idx = train[train['kfold'] == fold].index
-    
-    train_df = train[train['kfold'] != fold].reset_index(drop=True)
-    valid_df = train[train['kfold'] == fold].reset_index(drop=True)
-    
-    del train_df['kfold']
-    del valid_df['kfold']
+def prepare_data(train_df, valid_df, test_df, target_cols, 
+                 g_comp, c_comp, g_feat, c_feat, thr):
     
     train_df, valid_df, test_df = add_pca(train_df=train_df, 
                                         valid_df=valid_df, 
@@ -93,11 +78,35 @@ def run_training(train, test, target_cols, target,
     
     feature_cols = [c for c in train_df.columns if c not in target_cols]
     feature_cols = [c for c in feature_cols if c not in ['kfold','sig_id']]
-    num_features=len(feature_cols)
-    num_targets=len(target_cols)
     
     #scaling
     train_df, valid_df, test_df = scale_data(train=train_df, valid=valid_df, test=test_df)
+    
+    return train_df, valid_df, test_df, feature_cols
+
+    
+def run_training(train, test, target_cols, target, 
+                 g_comp, c_comp, g_feat, c_feat, thr, 
+                 batch_size, hidden_size, device, early_stopping_steps, learning_rate, epochs, weight_decay,
+                 fold, seed):
+    
+    test_df = test.copy()
+    
+    seed_everything(seed)
+    
+    trn_idx = train[train['kfold'] != fold].index
+    val_idx = train[train['kfold'] == fold].index
+    
+    train_df = train[train['kfold'] != fold].reset_index(drop=True)
+    valid_df = train[train['kfold'] == fold].reset_index(drop=True)
+    
+    del train_df['kfold']
+    del valid_df['kfold']
+    
+    train_df, valid_df, test_df, feature_cols = prepare_data(train_df, valid_df, test_df, target_cols,
+                                                             g_comp, c_comp, g_feat, c_feat, thr)
+    num_features=len(feature_cols)
+    num_targets=len(target_cols)
     
     x_train, y_train  = train_df[feature_cols].values, target.iloc[trn_idx, :][target_cols].values
     x_valid, y_valid =  valid_df[feature_cols].values, target.iloc[val_idx, :][target_cols].values
