@@ -4,7 +4,7 @@ __version__ = '1.0.0'
 import numpy as np
 
 
-class Iterator():
+class Iterator:
     def __init__(self, train, test, target_cols, seeds, n_folds, train_func, verbose=False, **kwargs):
         self.train = train
         self.test = test
