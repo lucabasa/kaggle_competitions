@@ -5,14 +5,14 @@ import numpy as np
 
 
 class Iterator:
-    def __init__(self, train, test, target_cols, seeds, n_folds, train_func, verbose=False, **kwargs):
+    def __init__(self, train, test, target_cols, seeds, n_folds, train_func, train_args, verbose=False):
         self.train = train
         self.test = test
         self.target_cols = target_cols
         self.seeds = seeds
         self.n_folds = n_folds
         self.train_func = train_func
-        self.train_args = kwargs
+        self.train_args = train_args
         self.verbose = verbose
         
 
@@ -41,7 +41,7 @@ class Iterator:
             if self.verbose:
                 print(f'\t FOLD: {fold}')
             
-            oof_fold, pred_fold = self.train_func(seed=seed, **self.train_args)
+            oof_fold, pred_fold = self.train_func(seed=seed, fold=fold, **self.train_args)
 
             predictions += pred_fold / self.n_folds
             oof += oof_fold
