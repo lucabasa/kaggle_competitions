@@ -42,7 +42,7 @@ def add_pca(train_df, valid_df, test_df, g_comp, c_comp, g_feat, c_feat, add=Tru
     # GENES
     
     pca = PCA(n_components=g_comp, random_state=1903)
-    pipe = Pipeline([('scal', RobustScaler()), ('pca', pca)])
+    pipe = Pipeline([('scal', DfScaler(method='robust')), ('pca', pca)])
     train2 = pipe.fit_transform(train_df[g_feat])
     valid2 = pipe.transform(valid_df[g_feat])
     test2 = pipe.transform(test_df[g_feat])
@@ -63,7 +63,7 @@ def add_pca(train_df, valid_df, test_df, g_comp, c_comp, g_feat, c_feat, add=Tru
     #CELLS
 
     pca = PCA(n_components=c_comp, random_state=1903)
-    pipe = Pipeline([('scal', RobustScaler()), ('pca', pca)])
+    pipe = Pipeline([('scal', DfScaler(method='robust')), ('pca', pca)])
     train2 = pipe.fit_transform(train_df[c_feat])
     valid2 = pipe.transform(valid_df[c_feat])
     test2 = pipe.transform(test_df[c_feat])
@@ -109,7 +109,7 @@ class DfScaler(BaseEstimator, TransformerMixin):
     '''
     Wrapper of several sklearn scalers that keeps the dataframe structure
     '''
-    def __init__(self, method='standard', feature_range=(0,1)):
+    def __init__(self, method='standard', feature_range=(0,1), n_quantiles=1000, output_distribution='uniform', random_state=345):
         super().__init__()
         self.method = method
         self._validate_input()
@@ -128,16 +128,28 @@ class DfScaler(BaseEstimator, TransformerMixin):
             self.data_max_ = None
             self.data_range_ = None
             self.n_samples_seen_ = None
+        elif method == 'quantile':
+            self.n_quantiles = n_quantiles
+            self.output_distribution = output_distribution
+            self.random_state = random_state
+            self.scl = QuantileTransformer(n_quantiles=self.n_quantiles, 
+                                           output_distribution=self.output_distribution, 
+                                           random_state=self.random_state)
+            self.n_quantiles_ = None
+            self.quantiles_ = None
+            self.references_ = None
 
             
     def _validate_input(self):
-        allowed_methods = ["standard", 'robust', 'minmax']
+        allowed_methods = ["standard", 'robust', 'minmax', 'quantile']
         if self.method not in allowed_methods:
             raise ValueError(f"Can only use these methods: {allowed_methods} got method={self.method}")
     
     
     def fit(self, X, y=None):
         self.scl.fit(X)
+        if self.method == 'quantile':
+            return self
         if self.method == 'standard':
             self.mean_ = pd.Series(self.scl.mean_, index=X.columns)
         elif self.method == 'robust':

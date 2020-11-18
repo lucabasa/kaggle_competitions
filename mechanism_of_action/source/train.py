@@ -37,7 +37,7 @@ class Model(nn.Module):
         
         x = self.batch_norm2(x)
         x = self.dropout2(x)
-        x = F.relu(self.dense2(x))
+        x = F.leaky_relu(self.dense2(x), 1e-3)
         
         x = self.batch_norm3(x)
         x = self.dropout3(x)
