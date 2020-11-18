@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 
 import pandas as pd
 
@@ -77,9 +77,10 @@ def add_pca(train_df, valid_df, test_df, g_comp, c_comp, g_feat, c_feat, add=Tru
         valid_df = pd.concat((valid_df, valid2), axis=1)
         test_df = pd.concat((test_df, test2), axis=1)
     else:
-        train_df = pd.concat((train_g, train2), axis=1)
-        valid_df = pd.concat((valid_g, valid2), axis=1)
-        test_df = pd.concat((test_g, test2), axis=1)
+        other_cols = [col for col in train_df if col not in c_feat and col not in g_feat]
+        train_df = pd.concat([train_df[other_cols], train_g, train2], axis=1)
+        valid_df = pd.concat([valid_df[other_cols], valid_g, valid2], axis=1)
+        test_df = pd.concat([test_df[other_cols], test_g, test2], axis=1)
     
     return train_df, valid_df, test_df
 

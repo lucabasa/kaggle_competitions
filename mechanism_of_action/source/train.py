@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.1.0'
+__version__ = '1.2.0'
 
 import numpy as np
 import pandas as pd
@@ -47,17 +47,17 @@ class Model(nn.Module):
     
     
 def prepare_data(train_df, valid_df, test_df, target_cols, 
-                 g_comp, c_comp, g_feat, c_feat, thr):
+                 g_comp, c_comp, g_feat, c_feat, pca_add, thr):
     
     train_df, valid_df, test_df = add_pca(train_df=train_df, 
                                         valid_df=valid_df, 
                                         test_df=test_df, 
                                         g_comp=g_comp, c_comp=c_comp, 
-                                        g_feat=g_feat, c_feat=c_feat)
-    
-    train_df = process_data(data=train_df, features_g=g_feat, features_c=c_feat)
-    valid_df = process_data(data=valid_df, features_g=g_feat, features_c=c_feat)
-    test_df = process_data(data=test_df, features_g=g_feat, features_c=c_feat)
+                                        g_feat=g_feat, c_feat=c_feat, add=pca_add)
+    if pca_add:
+        train_df = process_data(data=train_df, features_g=g_feat, features_c=c_feat)
+        valid_df = process_data(data=valid_df, features_g=g_feat, features_c=c_feat)
+        test_df = process_data(data=test_df, features_g=g_feat, features_c=c_feat)
     
     train_df, valid_df, test_df = var_tr(train_df=train_df, 
                                        valid_df=valid_df, 
@@ -87,7 +87,7 @@ def prepare_data(train_df, valid_df, test_df, target_cols,
 
     
 def run_training(train, test, target_cols, target, 
-                 g_comp, c_comp, g_feat, c_feat, thr, 
+                 g_comp, c_comp, g_feat, c_feat, pca_add, thr, 
                  batch_size, hidden_size, device, early_stopping_steps, learning_rate, epochs, weight_decay,
                  fold, seed):
     
@@ -105,7 +105,7 @@ def run_training(train, test, target_cols, target,
     del valid_df['kfold']
     
     train_df, valid_df, test_df, feature_cols = prepare_data(train_df, valid_df, test_df, target_cols,
-                                                             g_comp, c_comp, g_feat, c_feat, thr)
+                                                             g_comp, c_comp, g_feat, c_feat, pca_add, thr)
     num_features=len(feature_cols)
     num_targets=len(target_cols)
     
