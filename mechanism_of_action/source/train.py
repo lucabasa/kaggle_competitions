@@ -159,7 +159,7 @@ def run_training(train, test, target_cols, target,
             if early_step >= early_stopping_steps:
                 break
     
-    plot_learning(train_losses, valid_losses, fold)
+    plot_learning(train_losses, valid_losses, fold, seed)
     
     #--------------------- PREDICTION---------------------
     x_test = test_df[feature_cols].values
