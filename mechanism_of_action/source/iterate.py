@@ -41,7 +41,7 @@ class Iterator:
             if self.verbose:
                 print(f'\t FOLD: {fold}')
             
-            oof_fold, pred_fold = self.train_func(seed=seed, fold=fold, **self.train_args)
+            oof_fold, pred_fold = self.train_func(seed=seed, fold=fold, verbose=self.verbose, **self.train_args)
 
             predictions += pred_fold / self.n_folds
             oof += oof_fold

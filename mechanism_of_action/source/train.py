@@ -89,7 +89,7 @@ def prepare_data(train_df, valid_df, test_df, target_cols,
 def run_training(train, test, target_cols, target, 
                  g_comp, c_comp, g_feat, c_feat, pca_add, thr, 
                  batch_size, hidden_size, device, early_stopping_steps, learning_rate, epochs, weight_decay,
-                 fold, seed):
+                 fold, seed, verbose):
     
     test_df = test.copy()
     
@@ -136,13 +136,15 @@ def run_training(train, test, target_cols, target,
     train_losses = []
     valid_losses = []
     
-    print(f"FOLD: {fold}, n_features={num_features}")
+    if verbose:
+        print(f"FOLD: {fold}, n_features={num_features}")
     
     for epoch in range(epochs):
         
         train_loss = train_fn(model, optimizer,scheduler, loss_fn, trainloader, device)
         valid_loss, valid_preds = valid_fn(model, loss_fn, validloader, device)
-        print(f"EPOCH: {epoch}, train_loss: {train_loss}, valid_loss: {valid_loss}")
+        if verbose:
+            print(f"EPOCH: {epoch}, train_loss: {train_loss}, valid_loss: {valid_loss}")
         
         train_losses.append(train_loss)
         valid_losses.append(valid_loss)
