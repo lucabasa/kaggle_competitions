@@ -37,7 +37,7 @@ def process_data(data, features_g, features_c):
     return df
 
 
-def add_pca(train_df, valid_df, test_df, g_comp, c_comp, g_feat, c_feat):
+def add_pca(train_df, valid_df, test_df, g_comp, c_comp, g_feat, c_feat, add=True):
     
     # GENES
     
@@ -50,10 +50,15 @@ def add_pca(train_df, valid_df, test_df, g_comp, c_comp, g_feat, c_feat):
     train2 = pd.DataFrame(train2, columns=[f'pca_G-{i}' for i in range(g_comp)])
     valid2 = pd.DataFrame(valid2, columns=[f'pca_G-{i}' for i in range(g_comp)])
     test2 = pd.DataFrame(test2, columns=[f'pca_G-{i}' for i in range(g_comp)])
-
-    train_df = pd.concat((train_df, train2), axis=1)
-    valid_df = pd.concat((valid_df, valid2), axis=1)
-    test_df = pd.concat((test_df, test2), axis=1)
+    
+    if add:
+        train_df = pd.concat((train_df, train2), axis=1)
+        valid_df = pd.concat((valid_df, valid2), axis=1)
+        test_df = pd.concat((test_df, test2), axis=1)
+    else:
+        train_g = train2
+        valid_g = valid2
+        test_g = test2
 
     #CELLS
 
@@ -66,10 +71,15 @@ def add_pca(train_df, valid_df, test_df, g_comp, c_comp, g_feat, c_feat):
     train2 = pd.DataFrame(train2, columns=[f'pca_C-{i}' for i in range(c_comp)])
     valid2 = pd.DataFrame(valid2, columns=[f'pca_C-{i}' for i in range(c_comp)])
     test2 = pd.DataFrame(test2, columns=[f'pca_C-{i}' for i in range(c_comp)])
-
-    train_df = pd.concat((train_df, train2), axis=1)
-    valid_df = pd.concat((valid_df, valid2), axis=1)
-    test_df = pd.concat((test_df, test2), axis=1)
+    
+    if add:
+        train_df = pd.concat((train_df, train2), axis=1)
+        valid_df = pd.concat((valid_df, valid2), axis=1)
+        test_df = pd.concat((test_df, test2), axis=1)
+    else:
+        train_df = pd.concat((train_g, train2), axis=1)
+        valid_df = pd.concat((valid_g, valid2), axis=1)
+        test_df = pd.concat((test_g, test2), axis=1)
     
     return train_df, valid_df, test_df
 
@@ -82,16 +92,13 @@ def var_tr(train_df, valid_df, test_df, thr, cat_cols):
     valid_transformed = var_thresh.transform(valid_df[[col for col in valid_df if col not in cat_cols]])
     test_transformed = var_thresh.transform(test_df[[col for col in test_df if col not in cat_cols]])
 
-    train_features = pd.DataFrame(train_df[cat_cols].values.reshape(-1, 4),\
-                                  columns=cat_cols)
+    train_features = train_df[cat_cols]
     train_features = pd.concat([train_features, pd.DataFrame(train_transformed)], axis=1)
     
-    valid_features = pd.DataFrame(valid_df[cat_cols].values.reshape(-1, 4),\
-                                  columns=cat_cols)
+    valid_features = valid_df[cat_cols]
     valid_features = pd.concat([valid_features, pd.DataFrame(valid_transformed)], axis=1)
 
-    test_features = pd.DataFrame(test_df[cat_cols].values.reshape(-1, 4),\
-                                 columns=cat_cols)
+    test_features = test_df[cat_cols]
     test_features = pd.concat([test_features, pd.DataFrame(test_transformed)], axis=1)
     
     return train_features, valid_features, test_features
