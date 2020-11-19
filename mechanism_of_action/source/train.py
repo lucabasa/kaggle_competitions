@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.2.0'
+__version__ = '1.3.0'
 
 import numpy as np
 import pandas as pd
@@ -13,6 +13,7 @@ from source.torch_utils import seed_everything, MoADataset, TestDataset, train_f
 from source.process import add_pca, var_tr, process_data, scale_data
 from source.analyze import plot_learning
 
+from source.torch_utils import SmoothBCEwLogits
 
 
 class Model(nn.Module):
@@ -129,6 +130,7 @@ def run_training(train, test, target_cols, target,
                                               max_lr=1e-2, epochs=epochs, steps_per_epoch=len(trainloader))
     
     loss_fn = nn.BCEWithLogitsLoss()
+    loss_tr = SmoothBCEwLogits(smoothing =0.001)
     
     early_step = 0
     oof = np.zeros((len(train), target.iloc[:, 1:].shape[1]))
@@ -141,7 +143,7 @@ def run_training(train, test, target_cols, target,
     
     for epoch in range(epochs):
         
-        train_loss = train_fn(model, optimizer,scheduler, loss_fn, trainloader, device)
+        train_loss = train_fn(model, optimizer,scheduler, loss_tr, trainloader, device)
         valid_loss, valid_preds = valid_fn(model, loss_fn, validloader, device)
         if verbose:
             print(f"EPOCH: {epoch}, train_loss: {train_loss}, valid_loss: {valid_loss}")
