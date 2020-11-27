@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.3.0'
+__version__ = '1.4.0'
 
 import numpy as np
 import pandas as pd
@@ -17,19 +17,27 @@ from source.torch_utils import SmoothBCEwLogits
 
 
 class Model(nn.Module):
-    def __init__(self, num_features, num_targets, hidden_size):
+    def __init__(self, num_features, num_targets, hidden_size, dropout, lay_4=False):
         super().__init__()
+        self.dropout = dropout
+        self.lay_4 = lay_4
+        
         self.batch_norm1 = nn.BatchNorm1d(num_features)
-        self.dropout1 = nn.Dropout(0.25)
+        self.dropout1 = nn.Dropout(self.dropout)
         self.dense1 = nn.utils.weight_norm(nn.Linear(num_features, hidden_size))
         
         self.batch_norm2 = nn.BatchNorm1d(hidden_size)
-        self.dropout2 = nn.Dropout(0.25)
+        self.dropout2 = nn.Dropout(self.dropout)
         self.dense2 = nn.utils.weight_norm(nn.Linear(hidden_size, hidden_size))
         
-        self.batch_norm3 = nn.BatchNorm1d(hidden_size)
-        self.dropout3 = nn.Dropout(0.25)
-        self.dense3 = nn.utils.weight_norm(nn.Linear(hidden_size, num_targets))
+        if self.lay_4:
+            self.batch_norm3 = nn.BatchNorm1d(hidden_size)
+            self.dropout3 = nn.Dropout(self.dropout)
+            self.dense3 = nn.utils.weight_norm(nn.Linear(hidden_size, hidden_size))
+        
+        self.batch_norm_end = nn.BatchNorm1d(hidden_size)
+        self.dropout_end = nn.Dropout(self.dropout)
+        self.dense_end = nn.utils.weight_norm(nn.Linear(hidden_size, num_targets))
     
     def forward(self, x):
         x = self.batch_norm1(x)
@@ -40,19 +48,25 @@ class Model(nn.Module):
         x = self.dropout2(x)
         x = F.leaky_relu(self.dense2(x), 1e-3)
         
-        x = self.batch_norm3(x)
-        x = self.dropout3(x)
-        x = self.dense3(x)
+        if self.lay_4:
+            x = self.batch_norm3(x)
+            x = self.dropout3(x)
+            x = F.leaky_relu(self.dense3(x), 1e-3)
+        
+        x = self.batch_norm_end(x)
+        x = self.dropout_end(x)
+        x = self.dense_end(x)
         
         return x
     
     
-def prepare_data(train_df, valid_df, test_df, target_cols, 
+def prepare_data(train_df, valid_df, test_df, target_cols, scaling, n_quantiles,
                  g_comp, c_comp, g_feat, c_feat, pca_add, thr):
     
     train_df, valid_df, test_df = add_pca(train_df=train_df, 
                                         valid_df=valid_df, 
                                         test_df=test_df, 
+                                        scaling=scaling, n_quantiles=n_quantiles,
                                         g_comp=g_comp, c_comp=c_comp, 
                                         g_feat=g_feat, c_feat=c_feat, add=pca_add)
     if pca_add:
@@ -82,14 +96,14 @@ def prepare_data(train_df, valid_df, test_df, target_cols,
     feature_cols = [c for c in feature_cols if c not in ['kfold','sig_id']]
     
     #scaling
-    train_df, valid_df, test_df = scale_data(train=train_df, valid=valid_df, test=test_df)
+    train_df, valid_df, test_df = scale_data(train=train_df, valid=valid_df, test=test_df, scaling=scaling, n_quantiles=n_quantiles)
     
     return train_df, valid_df, test_df, feature_cols
 
     
-def run_training(train, test, target_cols, target, 
+def run_training(train, test, target_cols, target, scaling, n_quantiles,
                  g_comp, c_comp, g_feat, c_feat, pca_add, thr, 
-                 batch_size, hidden_size, device, early_stopping_steps, learning_rate, epochs, weight_decay,
+                 batch_size, hidden_size, device, early_stopping_steps, learning_rate, epochs, weight_decay, dropout, lay_4,
                  fold, seed, verbose):
     
     test_df = test.copy()
@@ -105,7 +119,7 @@ def run_training(train, test, target_cols, target,
     del train_df['kfold']
     del valid_df['kfold']
     
-    train_df, valid_df, test_df, feature_cols = prepare_data(train_df, valid_df, test_df, target_cols,
+    train_df, valid_df, test_df, feature_cols = prepare_data(train_df, valid_df, test_df, target_cols, scaling, n_quantiles,
                                                              g_comp, c_comp, g_feat, c_feat, pca_add, thr)
     num_features=len(feature_cols)
     num_targets=len(target_cols)
@@ -121,6 +135,8 @@ def run_training(train, test, target_cols, target,
         num_features=num_features,
         num_targets=num_targets,
         hidden_size=hidden_size,
+        dropout=dropout,
+        lay_4=lay_4
     )
     
     model.to(device)
@@ -174,6 +190,8 @@ def run_training(train, test, target_cols, target,
         num_features=num_features,
         num_targets=num_targets,
         hidden_size=hidden_size,
+        dropout=dropout,
+        lay_4=lay_4
     )
     
     model.load_state_dict(torch.load(f"models/FOLD{fold}_.pth"))

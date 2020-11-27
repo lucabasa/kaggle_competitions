@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.1.0'
+__version__ = '1.2.0'
 
 import pandas as pd
 
@@ -37,12 +37,12 @@ def process_data(data, features_g, features_c):
     return df
 
 
-def add_pca(train_df, valid_df, test_df, g_comp, c_comp, g_feat, c_feat, add=True):
+def add_pca(train_df, valid_df, test_df, scaling, n_quantiles, g_comp, c_comp, g_feat, c_feat, add=True):
     
     # GENES
     
     pca = PCA(n_components=g_comp, random_state=1903)
-    pipe = Pipeline([('scal', DfScaler(method='robust')), ('pca', pca)])
+    pipe = Pipeline([('scal', DfScaler(method=scaling, n_quantiles=n_quantiles)), ('pca', pca)])
     train2 = pipe.fit_transform(train_df[g_feat])
     valid2 = pipe.transform(valid_df[g_feat])
     test2 = pipe.transform(test_df[g_feat])
@@ -63,7 +63,7 @@ def add_pca(train_df, valid_df, test_df, g_comp, c_comp, g_feat, c_feat, add=Tru
     #CELLS
 
     pca = PCA(n_components=c_comp, random_state=1903)
-    pipe = Pipeline([('scal', DfScaler(method='robust')), ('pca', pca)])
+    pipe = Pipeline([('scal', DfScaler(method=scaling, n_quantiles=n_quantiles)), ('pca', pca)])
     train2 = pipe.fit_transform(train_df[c_feat])
     valid2 = pipe.transform(valid_df[c_feat])
     test2 = pipe.transform(test_df[c_feat])
@@ -109,7 +109,7 @@ class DfScaler(BaseEstimator, TransformerMixin):
     '''
     Wrapper of several sklearn scalers that keeps the dataframe structure
     '''
-    def __init__(self, method='standard', feature_range=(0,1), n_quantiles=1000, output_distribution='uniform', random_state=345):
+    def __init__(self, method='standard', feature_range=(0,1), n_quantiles=1000, output_distribution='normal', random_state=345):
         super().__init__()
         self.method = method
         self._validate_input()
@@ -171,9 +171,9 @@ class DfScaler(BaseEstimator, TransformerMixin):
         return Xscaled
     
     
-def scale_data(train, valid, test):
+def scale_data(train, valid, test, scaling, n_quantiles):
     
-    scl = DfScaler(method='robust')
+    scl = DfScaler(method=scaling, n_quantiles=n_quantiles)
     scaled_train = scl.fit_transform(train[[col for col in train if col!='sig_id']])
     scaled_train = pd.concat([train[['sig_id']], scaled_train], axis=1)
     
