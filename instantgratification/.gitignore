@@ -3,4 +3,4 @@ oof_preds/
 plots/
 __pycache__/
 submissions/
-.pynb_checkpoints/
+.ipynb_checkpoints/
