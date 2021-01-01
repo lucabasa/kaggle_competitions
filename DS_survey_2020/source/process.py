@@ -3,6 +3,7 @@ __version__ = '0.0.1'
 
 import numpy as np 
 import pandas as pd
+from pandas.api.types import CategoricalDtype
 
 
 def total_question(data, question):
@@ -43,7 +44,7 @@ def clean_data(data):
                                      'South Korea': 'Korea (Republic of)', 
                                      'Republic of Korea': 'Korea (Republic of)'})
 
-    continents = pd.read_csv('/kaggle/input/country-to-continent/countryContinent.csv', encoding = 'ISO-8859-1')
+    continents = pd.read_csv('data/countryContinent.csv', encoding = 'ISO-8859-1')
     data = pd.merge(data, continents[['country', 'continent', 'sub_region']], left_on='Q3', right_on='country', how='left')
 
 
