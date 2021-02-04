@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.1.0'
+__version__ = '1.1.1'
 __status__ = 'development'
 
 
@@ -141,17 +141,16 @@ def find_cats(data, target, thrs=0.1, agg_func='mean', critical=0.05, ks=True, f
 def segm_target(data, cat, target):
     '''
     Studies the target segmented by a categorical feature.
-    It plots both a boxplot and a distplot for visual support
+    It plots both a boxplot and a kdeplot for visual support
     '''
     df = data.groupby(cat)[target].agg(['count', 'mean', 'max', 
                                         'min', 'median', 'std'])
     fig, ax = plt.subplots(1,2, figsize=(12, 5))
-    sns.boxplot(cat, target, data=data, ax=ax[0])
+    sns.boxplot(x=cat, y=target, data=data, ax=ax[0])
     for val in data[cat].unique():
         tmp = data[data[cat] == val]
-        sns.distplot(tmp[target], hist=False, kde=True,
-                 kde_kws = {'linewidth': 3},
-                 label = val, ax=ax[1])  
+        sns.kdeplot(tmp[target], linewidth=3, alpha=0.7,
+                 label=val, ax=ax[1])  
     return df
 
  

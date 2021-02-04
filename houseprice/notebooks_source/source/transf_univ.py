@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.3.0'
+__version__ = '1.3.1'
 __status__ = 'development'
 
 
@@ -21,6 +21,7 @@ class feat_sel(BaseEstimator, TransformerMixin):
     In this way we can build separate pipelines for separate data types.
     '''
     def __init__(self, dtype='numeric'):
+        warnings.warn("This class has been implemented in tubesml",DeprecationWarning)
         self.dtype = dtype
  
     def fit( self, X, y=None ):
@@ -40,6 +41,7 @@ class df_imputer(TransformerMixin, BaseEstimator):
     Just a wrapper for the SimpleImputer that keeps the dataframe structure
     '''
     def __init__(self, strategy='mean'):
+        warnings.warn("This class has been implemented in tubesml",DeprecationWarning)
         self.strategy = strategy
         self.imp = None
         self.statistics_ = None
@@ -67,6 +69,7 @@ class df_scaler(TransformerMixin, BaseEstimator):
     Wrapper of StandardScaler or RobustScaler
     '''
     def __init__(self, method='standard'):
+        warnings.warn("This class has been implemented in tubesml",DeprecationWarning)
         self.scl = None
         self.scale_ = None
         self.method = method
@@ -104,6 +107,7 @@ class dummify(TransformerMixin, BaseEstimator):
     Wrapper for get dummies
     '''
     def __init__(self, drop_first=False, match_cols=True):
+        warnings.warn("This class has been implemented in tubesml",DeprecationWarning)
         self.drop_first = drop_first
         self.columns = []  # useful to well behave with FeatureUnion
         self.match_cols = match_cols
@@ -154,14 +158,15 @@ class FeatureUnion_df(TransformerMixin, BaseEstimator):
 
     '''
     def __init__(self, transformer_list, n_jobs=None, transformer_weights=None, verbose=False):
+        warnings.warn("This class has been implemented in tubesml",DeprecationWarning)
         self.transformer_list = transformer_list
         self.n_jobs = n_jobs
         self.transformer_weights = transformer_weights
         self.verbose = verbose  # these are necessary to work inside of GridSearch or similar
         self.feat_un = FeatureUnion(self.transformer_list, 
-                                    self.n_jobs, 
-                                    self.transformer_weights, 
-                                    self.verbose)
+                                    n_jobs=self.n_jobs, 
+                                    transformer_weights=self.transformer_weights, 
+                                    verbose=self.verbose)
         
     def fit(self, X, y=None):
         self.feat_un.fit(X, y)
