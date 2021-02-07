@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.1.1'
+__version__ = '1.1.2'
 __status__ = 'development'
 
 
@@ -144,7 +144,7 @@ def segm_target(data, cat, target):
     It plots both a boxplot and a kdeplot for visual support
     '''
     df = data.groupby(cat)[target].agg(['count', 'mean', 'max', 
-                                        'min', 'median', 'std'])
+                                        'min', 'median', 'std', 'skew'])
     fig, ax = plt.subplots(1,2, figsize=(12, 5))
     sns.boxplot(x=cat, y=target, data=data, ax=ax[0])
     for val in data[cat].unique():
