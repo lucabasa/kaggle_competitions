@@ -28,7 +28,7 @@ def train_model(train_df, test_df, target, trsf_pipe, estimator, cv, early_stopp
         model = clone(estimator)
         pipe = clone(trsf_pipe)
         
-        trn_set = pipe.fit_transform(trn_data)
+        trn_set = pipe.fit_transform(trn_data, trn_target)
         val_set = pipe.transform(val_data)
         test_set = pipe.transform(test)
         

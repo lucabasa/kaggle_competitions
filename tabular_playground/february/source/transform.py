@@ -4,6 +4,9 @@ __status__ = 'development'
 
 from tubesml.base import BaseTransformer, self_columns, reset_columns
 
+from sklearn.decomposition import PCA
+import pandas as pd
+
 class CatSimp(BaseTransformer):
     def __init__(self, cat7=True, cat6=True, cat8=True, cat4=True, cat9=True):
         super().__init__()
