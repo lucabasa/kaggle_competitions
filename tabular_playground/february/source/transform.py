@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.1.0'
+__version__ = '1.2.0'
 __status__ = 'development'
 
 from tubesml.base import BaseTransformer, self_columns, reset_columns
@@ -123,7 +123,7 @@ class PCADf(BaseTransformer):
 class TargetEncoder(BaseTransformer):
     # Heavily inspired by 
     # https://github.com/MaxHalford/xam/blob/93c066990d976c7d4d74b63fb6fb3254ee8d9b48/xam/feature_extraction/encoding/bayesian_target.py#L8
-    def __init__(self, to_encode=None, prior_weight=100):
+    def __init__(self, to_encode=None, prior_weight=100, agg_func='mean'):
         super().__init__()
         if isinstance(to_encode, str):
             self.to_encode = [to_encode]
@@ -132,6 +132,7 @@ class TargetEncoder(BaseTransformer):
         self.prior_weight = prior_weight
         self.prior_ = None
         self.posteriors_ = None
+        self.agg_func = agg_func
      
     
     @reset_columns
@@ -143,16 +144,16 @@ class TargetEncoder(BaseTransformer):
         tmp = X.copy()
         tmp['target'] = y
         
-        self.prior_ = tmp['target'].mean()
+        self.prior_ = tmp['target'].agg(self.agg_func)
         self.posteriors_ = {}
         
         for col in self.to_encode:
             
-            agg = tmp.groupby(col)['target'].agg(['count', 'mean'])
+            agg = tmp.groupby(col)['target'].agg(['count', self.agg_func])
             counts = agg['count']
-            means = agg['mean']
+            data = agg[self.agg_func]
             pw = self.prior_weight
-            self.posteriors_[col] = ((pw * self.prior_ + counts * means) / (pw + counts)).to_dict()
+            self.posteriors_[col] = ((pw * self.prior_ + counts * data) / (pw + counts)).to_dict()
         
         del tmp
         return self
