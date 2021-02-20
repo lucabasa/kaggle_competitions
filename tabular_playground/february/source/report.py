@@ -2,9 +2,12 @@ __author__ = 'lucabasa'
 __version__ = '1.1.0'
 __status__ = 'development'
 
-
+import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+
+import warnings
 
 
 def _plot_diagonal(ax):
