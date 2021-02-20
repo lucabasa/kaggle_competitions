@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 __status__ = 'development'
 
 
@@ -35,8 +35,12 @@ def plot_regression_predictions(data, true_label, pred_label, hue=None, savename
     legend=False
     addition=''
     if hue is not None:
-        legend=True
-        addition = f' by {hue}'
+        if tmp[hue].nunique() > 5:
+            warnings.warn(f'{hue} has more than 5 unique values, hue will be ignored', UserWarning)
+            hue = None
+        else:
+            legend=True
+            addition = f' by {hue}'
 
     sns.scatterplot(x='True Label', y='Prediction', data=tmp, ax=ax[0],
                          hue=hue, legend=legend, alpha=0.5)
