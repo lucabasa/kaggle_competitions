@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '2.0.0'
+__version__ = '2.1.0'
 __status__ = 'development'
 
 import pandas as pd
@@ -136,3 +136,20 @@ def plot_learning_curve(estimator, X, y, scoring=None, ylim=None, cv=None,
     
     plt.show()
     
+    
+def plot_feat_imp(feat_imp, n=-1, savename=None):
+    
+    if n > 0:
+        fi = feat_imp.head(n)
+    else:
+        fi = feat_imp
+    
+    fig, ax = plt.subplots(1,1, figsize=(13, int(0.3*fi.shape[0])))
+
+    sns.barplot(x=fi['mean'], y=fi.index, xerr=fi['std'], ax=ax)
+    
+    if savename is not None:
+        plt.savefig('plots/' + savename)
+        plt.show()
+    else:
+        plt.show()
