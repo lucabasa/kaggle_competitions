@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.1.1'
+__version__ = '1.1.2'
 __status__ = 'development'
 
 
@@ -87,7 +87,7 @@ def train_model(train_df, test_df, target, trsf_pipe, estimator, cv, early_stopp
     
     # pdp averaged over folds
     feat_pdp['x'] = round(feat_pdp['x'], pdp_round)
-    feat_pdp = feat_pdp.groupby(['feat', 'x'])['y'].agg(['mean', 'std']).reset_index(level='x')
+    feat_pdp = feat_pdp.groupby(['feat', 'x'])['y'].agg(['mean', 'std']).reset_index()
    
     rep_res['feat_imp'] = feat_df
     rep_res['n_iterations'] = iteration

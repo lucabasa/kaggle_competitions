@@ -153,3 +153,39 @@ def plot_feat_imp(feat_imp, n=-1, savename=None):
         plt.show()
     else:
         plt.show()
+        
+
+def plot_pdp(data, feature, title, axes):
+    data[data.feat==feature].plot(ax=axes, x='x', y='mean', color='k')
+    axes.fill_between(data[data.feat==feature].x, (data[data.feat==feature]['mean'] - data[data.feat==feature]['std']).astype(float),
+                                (data[data.feat==feature]['mean'] + data[data.feat==feature]['std']).astype(float), alpha=0.3, color='r')
+    axes.set_title(title, fontsize=14)
+    axes.legend().set_visible(False)
+    axes.set_xlabel('')
+    return axes
+
+
+def plot_partial_dependence(pdps, savename=None):
+    
+    num = pdps.feat.nunique()
+    rows = int(num/2) + (num % 2 > 0)
+    feats = pdps.feat.unique()
+    
+    fig, ax = plt.subplots(rows, 2, figsize=(12, 5 * (rows)))
+    i = 0
+    j = 0
+    for feat in feats:
+        if (rows > 1):
+            ax[i][j] = plot_pdp(pdps, feat, feat, ax[i][j])
+            j = (j+1)%2
+            i = i + 1 - j
+        else:
+            sns.regplot(x=x, y=y, ax=ax[i], x_estimator=x_estimator)
+            i = i+1
+
+    if savename is not None:
+        plt.savefig('plots/' + savename)
+        plt.show()
+    else:
+        plt.show()
+        
