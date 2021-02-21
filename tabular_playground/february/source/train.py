@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.1.0'
+__version__ = '1.1.1'
 __status__ = 'development'
 
 
@@ -11,16 +11,16 @@ from sklearn.exceptions import NotFittedError
 
 
 def get_pdp(clf, feature, data, fold):
-    val, exes = partial_dependence(clf, features=feature, 
+    res = partial_dependence(clf, features=feature, 
                                    X=data, grid_resolution=50, kind='average')
-    fold_tmp = pd.DataFrame({'x': exes[0], 'y': val[0]})
+    fold_tmp = pd.DataFrame({'x': res['values'][0], 'y': res['average'][0]})
     fold_tmp['feat'] = feature
     fold_tmp['fold'] = fold + 1
     
     return fold_tmp
 
 
-def train_model(train_df, test_df, target, trsf_pipe, estimator, cv, early_stopping=100, verbose=False, pdp=None):
+def train_model(train_df, test_df, target, trsf_pipe, estimator, cv, early_stopping=100, verbose=False, pdp=None, pdp_round=10):
     
     oof = np.zeros(len(train_df))
     pred = np.zeros(len(test_df))
@@ -66,9 +66,10 @@ def train_model(train_df, test_df, target, trsf_pipe, estimator, cv, early_stopp
         
         # FIXME: pdp does not work with LightGBM
         if pdp is not None:
+            pdp_set = pipe.transform(train)
             for feat in pdp:
                 try:
-                    fold_tmp = get_pdp(model, feat, trn_set, n_fold)
+                    fold_tmp = get_pdp(model, feat, pdp_set, n_fold)
                     feat_pdp = pd.concat([feat_pdp, fold_tmp], axis=0)
                 except NotFittedError:
                     break
@@ -85,8 +86,9 @@ def train_model(train_df, test_df, target, trsf_pipe, estimator, cv, early_stopp
     feat_df['std'] = feat_df['std'] / np.sqrt(cv.get_n_splits() - 1)  # std of the mean, unbiased
     
     # pdp averaged over folds
-    feat_pdp = feat_pdp.groupby(['feat', 'x'])['y'].agg(['mean', 'std'])
-    
+    feat_pdp['x'] = round(feat_pdp['x'], pdp_round)
+    feat_pdp = feat_pdp.groupby(['feat', 'x'])['y'].agg(['mean', 'std']).reset_index(level='x')
+   
     rep_res['feat_imp'] = feat_df
     rep_res['n_iterations'] = iteration
     rep_res['pdp'] = feat_pdp
