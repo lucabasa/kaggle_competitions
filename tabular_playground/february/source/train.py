@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.1.2'
+__version__ = '1.1.3'
 __status__ = 'development'
 
 
@@ -72,6 +72,7 @@ def train_model(train_df, test_df, target, trsf_pipe, estimator, cv, early_stopp
                     fold_tmp = get_pdp(model, feat, pdp_set, n_fold)
                     feat_pdp = pd.concat([feat_pdp, fold_tmp], axis=0)
                 except NotFittedError:
+                    pdp = None
                     break
         
         # store feature importance
@@ -86,8 +87,9 @@ def train_model(train_df, test_df, target, trsf_pipe, estimator, cv, early_stopp
     feat_df['std'] = feat_df['std'] / np.sqrt(cv.get_n_splits() - 1)  # std of the mean, unbiased
     
     # pdp averaged over folds
-    feat_pdp['x'] = round(feat_pdp['x'], pdp_round)
-    feat_pdp = feat_pdp.groupby(['feat', 'x'])['y'].agg(['mean', 'std']).reset_index()
+    if pdp is not None:
+        feat_pdp['x'] = round(feat_pdp['x'], pdp_round)
+        feat_pdp = feat_pdp.groupby(['feat', 'x'])['y'].agg(['mean', 'std']).reset_index()
    
     rep_res['feat_imp'] = feat_df
     rep_res['n_iterations'] = iteration
