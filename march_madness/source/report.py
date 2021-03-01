@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.8.0'
+__version__ = '2.0.0'
 __status__ = 'development'
 
 
@@ -30,32 +30,6 @@ def _plot_diagonal(ax):
     ax.plot(line.x, line.y, color='black', linestyle='--')
     
     return ax
-
-
-def get_coef(pipe):
-    '''
-    Get dataframe with coefficients of a model in Pipeline
-    The step before the model has to have a get_feature_name method
-    '''
-    imp = pipe.steps[-1][1].coef_.ravel().tolist()
-    feats = pipe.steps[-2][1].get_feature_names()
-    result = pd.DataFrame({'feat':feats,'score':imp})
-    result['abs_res'] = abs(result['score'])
-    result = result.sort_values(by=['abs_res'],ascending=False)
-    del result['abs_res']
-    return result
-
-
-def get_feature_importance(pipe):
-    '''
-    Get dataframe with the feature importance of a model in Pipeline
-    The step before the model has to have a get_feature_name method
-    '''
-    imp = pipe.steps[-1][1].feature_importances_.tolist() #it's a pipeline
-    feats = pipe.steps[-2][1].get_feature_names()
-    result = pd.DataFrame({'feat':feats,'score':imp})
-    result = result.sort_values(by=['score'],ascending=False)
-    return result
 
 
 def plot_predictions(data, true_label, pred_label, feature=None, hue=None, legend=False, savename='test.png'):
@@ -194,7 +168,7 @@ def _plot_proba(score, label, spline, ax):
                             "label": np.where(label > 0, 1, 0), 
                             "spline": spline})
     plot_df["pred_int"] = (plot_df["pred"]).astype(int)
-    plot_df = plot_df.groupby('pred_int', as_index=False)['spline','label'].mean()
+    plot_df = plot_df.groupby('pred_int', as_index=False)[['spline','label']].mean()
     
     ax.plot(plot_df.pred_int,plot_df.spline, label='Spline')
     ax.plot(plot_df.pred_int,plot_df.label, label='Score')
