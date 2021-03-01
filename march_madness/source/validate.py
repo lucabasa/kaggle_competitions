@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.4.0'
+__version__ = '1.5.0'
 __status__ = 'development'
 
 
@@ -11,6 +11,8 @@ from scipy.interpolate import UnivariateSpline
 from sklearn.model_selection import GridSearchCV
 
 import source.utility as ut
+
+import tubesml as tml
 
 
 def _clean_columns(train, test):
@@ -24,7 +26,7 @@ def _clean_columns(train, test):
 
 
 def _make_preds(train, y_train, test, model, kfolds, predict_proba):
-    oof, imp_coef = ut.cv_score(train, y_train, kfolds, model, imp_coef=True, predict_proba=predict_proba)
+    oof, imp_coef = tml.cv_score(data=train, target=y_train, estimator=model, cv=kfolds, imp_coef=True, predict_proba=predict_proba)
     
     fit_model = model.fit(train, y_train)
     if predict_proba:
