@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.1.3'
+__version__ = '1.2.0'
 __status__ = 'development'
 
 
@@ -20,12 +20,17 @@ def get_pdp(clf, feature, data, fold):
     return fold_tmp
 
 
-def train_model(train_df, test_df, target, trsf_pipe, estimator, cv, early_stopping=100, verbose=False, pdp=None, pdp_round=10):
+def train_model(train_df, test_df, target, trsf_pipe, estimator, cv, early_stopping=100, eval_metric='rmse',
+                weight=None, predict_proba=False, verbose=False, pdp=None, pdp_round=10):
     
     oof = np.zeros(len(train_df))
     pred = np.zeros(len(test_df))
     train = train_df.copy()
     test = test_df.copy()
+    if weight is not None:
+        w = pd.DataFrame({'w': weight}, index=train_df.index)
+    else:
+        w = pd.DataFrame({'w': [1]*len(train_df)}, index=train_df.index)
     
     rep_res = {}
     
@@ -37,6 +42,8 @@ def train_model(train_df, test_df, target, trsf_pipe, estimator, cv, early_stopp
         
         trn_data = train.iloc[train_index, :]
         val_data = train.iloc[test_index, :]
+        trn_weight = w.iloc[train_index, 0].values.ravel()
+        val_weight = w.iloc[test_index, 0].values.ravel()
         
         trn_target = target.iloc[train_index].values.ravel()
         val_target = target.iloc[test_index].values.ravel()      
@@ -48,15 +55,31 @@ def train_model(train_df, test_df, target, trsf_pipe, estimator, cv, early_stopp
         val_set = pipe.transform(val_data)
         test_set = pipe.transform(test)
         
-        model.fit(trn_set, trn_target, 
-                  eval_set=[(trn_set, trn_target), (val_set, val_target)], 
-                  eval_metric='rmse', 
-                  early_stopping_rounds=early_stopping,
-                  verbose=verbose
-                 )
+        try:
+            model.fit(trn_set, trn_target, 
+                      eval_set=[(trn_set, trn_target), (val_set, val_target)], 
+                      eval_metric=eval_metric, 
+                      sample_weight=trn_weight,
+                      eval_sample_weight=[val_weight],
+                      early_stopping_rounds=early_stopping,
+                      verbose=verbose
+                     )
+        except TypeError:
+            model.fit(trn_set, trn_target, 
+                      eval_set=[(trn_set, trn_target), (val_set, val_target)], 
+                      eval_metric='rmse', 
+                      sample_weight=trn_weight,
+                      #sample_weight_eval_set=[val_weight],
+                      early_stopping_rounds=early_stopping,
+                      verbose=verbose
+                     )
         
-        oof[test_index] = model.predict(val_set).ravel()
-        pred += model.predict(test_set).ravel() / cv.get_n_splits()
+        if predict_proba:
+            oof[test_index] = model.predict_proba(val_set)[:,1]
+            pred += model.predict_proba(test_set)[:,1] / cv.get_n_splits()
+        else:
+            oof[test_index] = model.predict(val_set).ravel()
+            pred += model.predict(test_set).ravel() / cv.get_n_splits()
         
         #store iteration used
         try:
@@ -77,7 +100,8 @@ def train_model(train_df, test_df, target, trsf_pipe, estimator, cv, early_stopp
         
         # store feature importance
         fold_df = pd.DataFrame()
-        fold_df['feat'] = trn_set.columns
+        #fold_df['feat'] = trn_set.columns
+        fold_df['feat'] = pipe.steps[-1][1].get_feature_names()
         fold_df['score'] = model.feature_importances_
         feat_df = pd.concat([feat_df, fold_df], axis=0)
 
