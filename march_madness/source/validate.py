@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.5.0'
+__version__ = '1.6.0'
 __status__ = 'development'
 
 
@@ -9,8 +9,6 @@ import numpy as np
 from scipy.interpolate import UnivariateSpline
 
 from sklearn.model_selection import GridSearchCV
-
-import source.utility as ut
 
 import tubesml as tml
 
@@ -51,7 +49,7 @@ def point_to_proba(oof, y_train, preds):
 
 def random_split(data, model, kfolds, target, test_size=0.2, predict_proba=False, tune=False, param_grid=None):
     
-    train, test = ut.make_test(data, test_size=test_size, random_state=324)
+    train, test = tml.make_test(data, test_size=test_size, strat_feat='Season', random_state=324)
     
     y_train = train[target]
     y_test = test[target]

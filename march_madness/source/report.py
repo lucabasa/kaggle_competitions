@@ -1,10 +1,12 @@
 __author__ = 'lucabasa'
-__version__ = '2.0.0'
+__version__ = '2.1.0'
 __status__ = 'development'
 
 
 import pandas as pd
 import numpy as np
+
+import tubesml as tml
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -17,62 +19,6 @@ from scipy.interpolate import UnivariateSpline
 from datetime import date
 from os.path import exists
 
-
-def _plot_diagonal(ax):
-    xmin, xmax = ax.get_xlim()
-    ymin, ymax = ax.get_ylim()
-    low = min(xmin, xmax)
-    high = max(xmin, xmax)
-    scl = (high - low) / 100
-    
-    line = pd.DataFrame({'x': np.arange(low, high ,scl), # small hack for a diagonal line
-                         'y': np.arange(low, high ,scl)})
-    ax.plot(line.x, line.y, color='black', linestyle='--')
-    
-    return ax
-
-
-def plot_predictions(data, true_label, pred_label, feature=None, hue=None, legend=False, savename='test.png'):
-    '''
-    Plot prediction vs true label or a specific feature. It also plots the residuals plot
-    '''
-    
-    tmp = data.copy()
-    tmp['Prediction'] = pred_label
-    tmp['True Label'] = true_label
-    tmp['Residual'] = tmp['True Label'] - tmp['Prediction']
-    
-    diag = False
-    alpha = 0.7
-    label = ''
-    
-    fig, ax = plt.subplots(1,2, figsize=(15,6))
-    
-    if feature is None:
-        feature = 'True Label'
-        diag = True
-    else:
-        legend = 'full'
-        sns.scatterplot(x=feature, y='True Label', data=tmp, ax=ax[0], label='True',
-                         hue=hue, legend=legend, alpha=alpha)
-        label = 'Predicted'
-        alpha = 0.4
-
-    sns.scatterplot(x=feature, y='Prediction', data=tmp, ax=ax[0], label=label,
-                         hue=hue, legend=legend, alpha=alpha)
-    if diag:
-        ax[0] = _plot_diagonal(ax[0])
-    
-    sns.scatterplot(x=feature, y='Residual', data=tmp, ax=ax[1], 
-                    hue=hue, legend=legend, alpha=0.7)
-    ax[1].axhline(y=0, color='r', linestyle='--')
-    
-    ax[0].set_title(f'{feature} vs Predictions')
-    ax[1].set_title(f'{feature} vs Residuals')
-    
-    if savename:
-        plt.savefig('plots/' + savename)
-    plt.show()
 
 
 def high_low_errors(data, *, res_list=None, n_samples=50,
@@ -253,8 +199,8 @@ def report_points(train, test, y_train, y_test, oof, preds, plot=True):
         fig.suptitle('Probabilities of victory via splines', fontsize=15)
 
         # plot predictions
-        plot_predictions(train, y_train, oof, savename=False)
-        plot_predictions(test, y_test, preds, savename=False)
+        tml.plot_regression_predictions(train, y_train, oof, savename=None)
+        tml.plot_regression_predictions(test, y_test, preds, savename=None)
         
         plot_pred_prob(spline_oof, spline_test, y_train, y_test)
     
