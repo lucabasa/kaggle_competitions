@@ -1,10 +1,12 @@
 __author__ = 'lucabasa'
-__version__ = '3.1.0'
+__version__ = '4.0.0'
 __status__ = 'development'
 
 
 import pandas as pd 
 import numpy as np 
+
+import statsmodels.api as sm
 
 from source.aggregated_stats import process_details, full_stats, rolling_stats
 
@@ -122,6 +124,54 @@ def add_stage(data):
     return data
 
 
+def team_quality(season, data):
+    formula = 'win~-1+T1_TeamID+T2_TeamID'
+    glm = sm.GLM.from_formula(formula=formula, 
+                              data=data.loc[data.Season==season,:], 
+                              family=sm.families.Binomial()).fit()
+    
+    quality = pd.DataFrame(glm.params).reset_index()
+    quality.columns = ['TeamID','quality']
+    quality['Season'] = season
+    quality['quality'] = np.exp(quality['quality'])
+    quality = quality.loc[quality.TeamID.str.contains('T1_')].reset_index(drop=True)
+    quality['TeamID'] = quality['TeamID'].apply(lambda x: x[10:14]).astype(int)
+    return quality
+
+
+def add_quality(data, reg):
+    reg = reg[['Season', 'WTeamID', 'LTeamID', 'WScore', 'LScore']].copy()
+    reg_inv = reg.copy()
+    
+    reg.columns = [x.replace('W','T1_').replace('L','T2_') for x in list(reg.columns)]
+    reg_inv.columns = [x.replace('L','T1_').replace('W','T2_') for x in list(reg_inv.columns)]
+
+    reg = pd.concat([reg, reg_inv]).sort_index().reset_index(drop = True)
+    
+    reg['PointDiff'] = reg['T1_Score'] - reg['T2_Score']
+    reg['T1_TeamID'] = reg['T1_TeamID'].astype(str)
+    reg['T2_TeamID'] = reg['T2_TeamID'].astype(str)
+    reg['win'] = np.where(reg['PointDiff']>0,1,0)
+    
+    all_quality = []
+    for year in reg.Season.unique():
+        all_quality.append(team_quality(year, reg))
+                           
+    all_quality = pd.concat(all_quality, ignore_index=True)
+    
+    team_quality_T1 = all_quality[['TeamID','Season','quality']]
+    team_quality_T1.columns = ['Team1','Season','T1_quality']
+    team_quality_T2 = all_quality[['TeamID','Season','quality']]
+    team_quality_T2.columns = ['Team2','Season','T2_quality']
+
+    data['Team1'] = data['Team1'].astype(int)
+    data['Team2'] = data['Team2'].astype(int)
+    data = data.merge(team_quality_T1, on = ['Team1','Season'], how = 'left')
+    data = data.merge(team_quality_T2, on = ['Team2','Season'], how = 'left')
+    
+    return data
+
+
 def make_training_data(details, targets):
     tmp = details.copy()
     tmp.columns = ['Season', 'Team1'] + \
@@ -203,6 +253,7 @@ def prepare_data(league):
     all_reg = make_training_data(regular_stats, target_data)
     all_reg = all_reg[all_reg.DayNum >= 136]  # remove pre tourney 
     all_reg = add_stage(all_reg)
+    all_reg = add_quality(all_reg, reg)
     all_reg.to_csv(save_loc + 'training_data.csv', index=False)
     
     playoff_stats.to_csv(save_loc + 'playoff_stats.csv', index=False)
