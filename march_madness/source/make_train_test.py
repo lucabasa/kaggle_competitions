@@ -8,7 +8,7 @@ import numpy as np
 
 import statsmodels.api as sm
 
-from source.aggregated_stats import process_details, full_stats, rolling_stats
+from source.aggregated_stats import process_details, full_stats, rolling_stats, high_seed
 
 
 def make_teams_target(data, league):
@@ -184,6 +184,7 @@ def make_training_data(details, targets):
     total = pd.merge(total, tmp, on=['Season', 'Team2'], how='left')
     
     if total.isnull().any().any():
+        print(total.columns[total.isnull().any()])
         raise ValueError('Something went wrong')
         
     stats = [col[3:] for col in total.columns if 'T1_' in col and 'region' not in col]
@@ -249,6 +250,9 @@ def prepare_data(league):
     # Target data generation 
     target_data = pd.read_csv(playoff_compact)
     target_data = make_teams_target(target_data, league)
+    
+    # Add high seed wins perc
+    regular_stats = high_seed(regular_stats, reg, seed)
     
     all_reg = make_training_data(regular_stats, target_data)
     all_reg = all_reg[all_reg.DayNum >= 136]  # remove pre tourney 

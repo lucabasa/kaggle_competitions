@@ -121,6 +121,37 @@ def process_details(data, rank_loc=None):
     return df
 
 
+def high_seed(reg_stats, game_data, seed):
+    tmp = pd.read_csv(seed)
+    tmp['Seed'] = tmp['Seed'].apply(lambda x: int(x[1:3]))
+
+    df = pd.merge(game_data, tmp.rename(columns={'TeamID': 'WTeamID',
+                                          'Seed': 'WSeed'}), 
+                        on=['Season', 'WTeamID'], how='left')
+    df = pd.merge(df, tmp.rename(columns={'TeamID': 'LTeamID',
+                                          'Seed': 'LSeed'}), 
+                        on=['Season', 'LTeamID'], how='left')
+
+    tmp = df[['Season', 'LTeamID', 'WTeamID', 'LSeed', 'WSeed']].copy()
+
+    df.loc[df.LSeed <= 7, 'Whigh_seed'] = 1
+    df.loc[df.WSeed <= 7, 'Lhigh_seed'] = 0
+
+    tmp = df[['Season', 'LTeamID', 'Lhigh_seed']].copy()
+    tmp.columns = ['Season', 'TeamID', 'high_seed']
+    df = df[['Season', 'WTeamID', 'Whigh_seed']].copy()
+    df.columns = ['Season', 'TeamID', 'high_seed']
+
+    df = pd.concat([df, tmp], ignore_index=True)
+
+    df = df.groupby(['Season', 'TeamID'], as_index=False).high_seed.mean()
+    
+    reg_stats = pd.merge(reg_stats, df, on=['Season', 'TeamID'], how='left')
+    reg_stats.high_seed = reg_stats.high_seed.fillna(0)
+    
+    return reg_stats
+
+
 def perc_OT_win(data):
     df = data[['Season', 'TeamID', 'NumOT', 'OT_win']].copy()
     df['has_OT'] = np.where(df.NumOT > 0, 1, 0)
