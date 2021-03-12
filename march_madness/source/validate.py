@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '1.6.0'
+__version__ = '2.0.0'
 __status__ = 'development'
 
 
@@ -11,6 +11,8 @@ from scipy.interpolate import UnivariateSpline
 from sklearn.model_selection import GridSearchCV
 
 import tubesml as tml
+
+from source.train_funcs import train_model
 
 
 def _clean_columns(train, test):
@@ -35,7 +37,7 @@ def _make_preds(train, y_train, test, model, kfolds, predict_proba):
     return fit_model, oof, imp_coef, predictions
 
 
-def random_split(data, model, kfolds, target, test_size=0.2, predict_proba=False, tune=False, param_grid=None):
+def random_split(data, model, kfolds, target, test_size=0.2, boost=False, predict_proba=False, tune=False, param_grid=None, **kwargs):
     
     train, test = tml.make_test(data, test_size=test_size, strat_feat='Season', random_state=324)
     
@@ -44,7 +46,7 @@ def random_split(data, model, kfolds, target, test_size=0.2, predict_proba=False
     
     train, test = _clean_columns(train, test)
     
-    if tune:
+    if tune and not boost:
         if predict_proba:
             grid = GridSearchCV(model, param_grid=param_grid, n_jobs=-1, 
                                 cv=5, scoring='neg_log_loss')
@@ -56,12 +58,16 @@ def random_split(data, model, kfolds, target, test_size=0.2, predict_proba=False
         print(grid.best_score_)
         print(grid.best_params_)
     
-    fit_model, oof, imp_coef, predictions = _make_preds(train, y_train, test, model, kfolds, predict_proba)
-    
-    return fit_model, oof, predictions, imp_coef, train, y_train, test, y_test
+    if boost:
+        oof, pred, rep_res = train_model(train, test, y_train, cv=kfolds, predict_proba=predict_proba, **kwargs)
+        return oof, pred, rep_res, train, y_train, test, y_test
+    else:    
+        fit_model, oof, imp_coef, predictions = _make_preds(train, y_train, test, model, kfolds, predict_proba)
+
+        return fit_model, oof, predictions, imp_coef, train, y_train, test, y_test
 
 
-def yearly_split(data, model, kfolds, target, predict_proba=False, tune=False, param_grid=None):
+def yearly_split(data, model, kfolds, target, boost=False, predict_proba=False, tune=False, param_grid=None, **kwargs):
     
     fit_model = {}
     oof = {}
@@ -84,7 +90,7 @@ def yearly_split(data, model, kfolds, target, predict_proba=False, tune=False, p
 
         train[yr], test[yr] = _clean_columns(train[yr], test[yr])
         
-        if tune:
+        if tune and not boost:
             if predict_proba:
                 grid = GridSearchCV(model, param_grid=param_grid, n_jobs=-1, 
                                     cv=5, scoring='neg_log_loss')
@@ -95,13 +101,17 @@ def yearly_split(data, model, kfolds, target, predict_proba=False, tune=False, p
             model = grid.best_estimator_
             print(grid.best_score_)
             print(grid.best_params_)
-        
-        fit_model[yr], oof[yr], imp_coef[yr], predictions[yr] = _make_preds(train[yr], 
-                                                                            y_train[yr], 
-                                                                            test[yr], 
-                                                                            model, 
-                                                                            kfolds, 
-                                                                            predict_proba)
+            
+        if boost:
+            oof[yr], predictions[yr], imp_coef[yr] = train_model(train[yr], test[yr], y_train[yr],
+                                                                 cv=kfolds, predict_proba=predict_proba, **kwargs)
+        else:
+            fit_model[yr], oof[yr], imp_coef[yr], predictions[yr] = _make_preds(train[yr], 
+                                                                                y_train[yr], 
+                                                                                test[yr], 
+                                                                                model, 
+                                                                                kfolds, 
+                                                                                predict_proba)
     
     return fit_model, oof, predictions, imp_coef, train, y_train, test, y_test
 
