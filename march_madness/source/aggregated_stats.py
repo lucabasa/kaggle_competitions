@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '3.1.0'
+__version__ = '3.2.0'
 __status__ = 'development'
 
 
@@ -116,12 +116,12 @@ def process_details(data, rank_loc=None):
     
     for col in stats:
         df[col+'_diff'] = df['W'+col] - df['L'+col]
-        df[col+'_advantage'] = (df[col+'_diff'] > 0).astype(int)
+        #df[col+'_advantage'] = (df[col+'_diff'] > 0).astype(int)
     
     return df
 
 
-def high_seed(reg_stats, game_data, seed):
+def highlow_seed(reg_stats, game_data, seed):
     tmp = pd.read_csv(seed)
     tmp['Seed'] = tmp['Seed'].apply(lambda x: int(x[1:3]))
 
@@ -134,17 +134,19 @@ def high_seed(reg_stats, game_data, seed):
 
     tmp = df[['Season', 'LTeamID', 'WTeamID', 'LSeed', 'WSeed']].copy()
 
-    df.loc[df.LSeed <= 7, 'Whigh_seed'] = 1
-    df.loc[df.WSeed <= 7, 'Lhigh_seed'] = 0
-
-    tmp = df[['Season', 'LTeamID', 'Lhigh_seed']].copy()
-    tmp.columns = ['Season', 'TeamID', 'high_seed']
-    df = df[['Season', 'WTeamID', 'Whigh_seed']].copy()
-    df.columns = ['Season', 'TeamID', 'high_seed']
+    df.loc[df.LSeed <= 6, 'Whigh_seed'] = 1
+    df.loc[df.WSeed <= 6, 'Lhigh_seed'] = 0
+    df.loc[(df.LSeed >= 7) | (df.LSeed.isna()), 'Wlow_seed'] = 1
+    df.loc[(df.WSeed >= 7) | (df.WSeed.isna()), 'Llow_seed'] = 0
+    
+    tmp = df[['Season', 'LTeamID', 'Lhigh_seed', 'Llow_seed']].copy()
+    tmp.columns = ['Season', 'TeamID', 'high_seed', 'low_seed']
+    df = df[['Season', 'WTeamID', 'Whigh_seed', 'Wlow_seed']].copy()
+    df.columns = ['Season', 'TeamID', 'high_seed', 'low_seed']
 
     df = pd.concat([df, tmp], ignore_index=True)
 
-    df = df.groupby(['Season', 'TeamID'], as_index=False).high_seed.mean()
+    df = df.groupby(['Season', 'TeamID'], as_index=False)[['high_seed', 'low_seed']].mean()
     
     reg_stats = pd.merge(reg_stats, df, on=['Season', 'TeamID'], how='left')
     reg_stats.high_seed = reg_stats.high_seed.fillna(0)
@@ -165,7 +167,7 @@ def perc_OT_win(data):
 
 def full_stats(data):
     df = data.copy()
-    
+
     to_select = [col for col in df.columns if col.startswith('W') 
                                              and '_perc' not in col 
                                              and 'Loc' not in col]
@@ -173,7 +175,7 @@ def full_stats(data):
     df_W = df[['Season', 'DayNum', 'NumOT'] + to_select].copy()
     df_W.columns = df_W.columns.str.replace('W','')
     df_W['N_wins'] = 1
-    
+
     to_select = [col for col in df.columns if col.startswith('L') 
                                              and '_perc' not in col 
                                              and 'Loc' not in col]
@@ -191,16 +193,16 @@ def full_stats(data):
         df_L['upset'] = 0
 
     df = pd.concat([df_W, df_L], sort=True)
-    
+
     del df['DayNum']
-    
+
     OT_perc = perc_OT_win(df)
-    
+
     not_use = ['NumOT']
     to_use = [col for col in df.columns if col not in not_use]
-    
+
     means = df[to_use].groupby(['Season','TeamID'], as_index=False).mean()
-    
+
     sums = df[to_use].groupby(['Season','TeamID'], as_index=False).sum()
     sums['FGM_perc'] = sums.FGM / sums.FGA
     sums['FGM2_perc'] = sums.FGM2 / sums.FGA2
@@ -212,13 +214,13 @@ def full_stats(data):
     to_use = ['Season', 'TeamID', 'FGM_perc',
               'FGM2_perc', 'FGM3_perc', 'FT_perc', 
               'FGM_no_ast_perc', 'True_shooting_perc', 'Opp_True_shooting_perc']
-    
+
     sums = sums[to_use].fillna(0)
-    
+
     stats_tot = pd.merge(means, sums, on=['Season', 'TeamID'])
     stats_tot = pd.merge(stats_tot, OT_perc, on=['Season', 'TeamID'], how='left')
     stats_tot['OT_win_perc'] = stats_tot['OT_win_perc'].fillna(0)
-  
+    
     return stats_tot
 
 
