@@ -8,7 +8,7 @@ import numpy as np
 
 import statsmodels.api as sm
 
-from source.aggregated_stats import process_details, full_stats, rolling_stats, high_seed
+from source.aggregated_stats import process_details, full_stats, rolling_stats, highlow_seed
 
 
 def make_teams_target(data, league):
@@ -226,12 +226,12 @@ def prepare_data(league):
     regular_stats = full_stats(reg)
     
     # Last 2 weeks stats
-#     last2weeks = reg[reg.DayNum >= 118].copy()
-#     last2weeks = full_stats(last2weeks)
-#     last2weeks.columns = ['L2W_' + col for col in last2weeks]
-#     last2weeks.rename(columns={'L2W_Season': 'Season', 'L2W_TeamID': 'TeamID'}, inplace=True)
+    last2weeks = reg[reg.DayNum >= 118].copy()
+    last2weeks = full_stats(last2weeks)
+    last2weeks.columns = ['L2W_' + col for col in last2weeks]
+    last2weeks.rename(columns={'L2W_Season': 'Season', 'L2W_TeamID': 'TeamID'}, inplace=True)
     
-#     regular_stats = pd.merge(regular_stats, last2weeks, on=['Season', 'TeamID'], how='left')
+    regular_stats = pd.merge(regular_stats, last2weeks, on=['Season', 'TeamID'], how='left')
     
     regular_stats = add_seed(seed, regular_stats)    
     
@@ -251,8 +251,8 @@ def prepare_data(league):
     target_data = pd.read_csv(playoff_compact)
     target_data = make_teams_target(target_data, league)
     
-    # Add high seed wins perc
-    regular_stats = high_seed(regular_stats, reg, seed)
+    # Add high and low seed wins perc
+    regular_stats = highlow_seed(regular_stats, reg, seed)
     
     all_reg = make_training_data(regular_stats, target_data)
     all_reg = all_reg[all_reg.DayNum >= 136]  # remove pre tourney 
