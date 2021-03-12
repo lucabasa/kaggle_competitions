@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '2.1.0'
+__version__ = '2.3.0'
 __status__ = 'development'
 
 
@@ -19,94 +19,6 @@ from scipy.interpolate import UnivariateSpline
 from datetime import date
 from os.path import exists
 
-
-
-def high_low_errors(data, *, res_list=None, n_samples=50,
-                    target=None, pred_list=None, mean=False, 
-                    abs_err=True, common=False):
-    '''
-    Report on the difference between high and low errors by doing a difference 
-    between the results of a pandas describe method
-
-    If the residuals are not provided, they can be calculated with the use of 
-    both target and pred_list
-
-    It is possible to compute the mean across the various models and to focus
-    on the absoulte errors
-
-    todo: implement the procedure that takes the common top n_samples errors
-
-    '''
-    
-    df = data.copy()
-    if pred_list:
-        res_list = []
-        for col in pred_list:
-            name = col + '_res'
-            res_list.append(name)
-            df[name] = df[target] - df[col]
-    
-    errors = {}
-    
-    if mean:
-        df['mean_res'] = df[res_list].mean(axis=1)
-        res_list += ['mean_res']
-
-    for col in res_list:
-        if abs_err:
-            if col == 'abs_err':
-                name = 'abs_err'
-            else:
-                name = 'abs_' + col
-            df[name] = abs(df[col])
-        else:
-            name = col
-        
-        high_err = df.sort_values(name, ascending=False).head(n_samples)
-        low_err = df.sort_values(name, ascending=False).tail(n_samples)
-        
-        try:
-            errors[name] = high_err.describe(include='all').drop(index=['top', 'count', 'freq']).fillna(0) - \
-                        low_err.describe(include='all').drop(index=['top', 'count', 'freq']).fillna(0)
-        except KeyError:
-            errors[name] = high_err.describe().fillna(0) - low_err.describe().fillna(0)
-        
-    return errors
-
-
-def make_results(label, prediction, model, parameters, target_name, variables, instances, verbose=False):
-    results=pd.DataFrame({'Date': [date.today().strftime("%d/%m/%Y")], 
-                          'Model': [model],
-                          'Parameters': [parameters], 
-                          'Target': target_name, 
-                          'Variables': variables, 
-                          'N_instances': instances})
-    
-    results['MAE'] = mean_absolute_error(y_true=label, y_pred=prediction)
-    results['MSE'] = mean_squared_error(y_true=label, y_pred=prediction)
-    results['Max_error'] = max_error(y_true=label, y_pred=prediction)
-    results['Explained_var'] = explained_variance_score(y_true=label, y_pred=prediction)
-
-    if verbose:
-        print(f'MAE: \t\t {round(results["MAE"].values[0], 5)}')
-        print(f'MSE: \t\t {round(results["MSE"].values[0], 5)}')
-        print(f'Max Error: \t {round(results["Max_error"].values[0], 5)}')
-        print(f'Expl Variance: \t {round(results["Explained_var"].values[0], 5)}')
-    
-    return results
-
-
-def store_results(file_loc, label, prediction, model, parameters, target_name, variables, instances, verbose=False):
-    
-    results = make_results(label, prediction, model, parameters, target_name, variables, instances, verbose)
-    
-    if not exists(file_loc):
-        results.to_csv(file_loc, index=False)
-    else:
-        old_results = pd.read_csv(file_loc)
-        results = pd.concat([old_results, results])
-        results.to_csv(file_loc, index=False) 
-    return
 
 
 def _plot_proba(score, label, spline, ax):

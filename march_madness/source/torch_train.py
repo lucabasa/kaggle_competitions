@@ -57,47 +57,6 @@ class Model(nn.Module):
         x = self.dense_end(x)
         
         return x
-    
-    
-def prepare_data(train_df, valid_df, test_df, target_cols, scaling, n_quantiles,
-                 g_comp, c_comp, g_feat, c_feat, pca_add, thr):
-    
-    train_df, valid_df, test_df = add_pca(train_df=train_df, 
-                                        valid_df=valid_df, 
-                                        test_df=test_df, 
-                                        scaling=scaling, n_quantiles=n_quantiles,
-                                        g_comp=g_comp, c_comp=c_comp, 
-                                        g_feat=g_feat, c_feat=c_feat, add=pca_add)
-    if pca_add:
-        train_df = process_data(data=train_df, features_g=g_feat, features_c=c_feat)
-        valid_df = process_data(data=valid_df, features_g=g_feat, features_c=c_feat)
-        test_df = process_data(data=test_df, features_g=g_feat, features_c=c_feat)
-    
-    train_df, valid_df, test_df = var_tr(train_df=train_df, 
-                                       valid_df=valid_df, 
-                                       test_df=test_df, 
-                                       thr=thr, 
-                                       cat_cols=['sig_id','cp_type','cp_time','cp_dose'])
-    
-    train_df = train_df.drop('cp_type', axis=1)
-    valid_df = valid_df.drop('cp_type', axis=1)
-    test_df = test_df.drop('cp_type', axis=1)
-    
-    train_df['time_dose'] = train_df['cp_time'].astype(str)+train_df['cp_dose']
-    valid_df['time_dose'] = valid_df['cp_time'].astype(str)+valid_df['cp_dose']
-    test_df['time_dose'] = test_df['cp_time'].astype(str)+test_df['cp_dose']
-    
-    train_df = pd.get_dummies(train_df, columns=['cp_time','cp_dose','time_dose'])
-    valid_df = pd.get_dummies(valid_df, columns=['cp_time','cp_dose','time_dose'])
-    test_df = pd.get_dummies(test_df, columns=['cp_time','cp_dose','time_dose'])
-    
-    feature_cols = [c for c in train_df.columns if c not in target_cols]
-    feature_cols = [c for c in feature_cols if c not in ['kfold','sig_id']]
-    
-    #scaling
-    train_df, valid_df, test_df = scale_data(train=train_df, valid=valid_df, test=test_df, scaling=scaling, n_quantiles=n_quantiles)
-    
-    return train_df, valid_df, test_df, feature_cols
 
     
 def run_training(train, test, target_cols, target,  
@@ -116,9 +75,6 @@ def run_training(train, test, target_cols, target,
     
     del train_df['kfold']
     del valid_df['kfold']
-    
-#     train_df, valid_df, test_df, feature_cols = prepare_data(train_df, valid_df, test_df, target_cols, scaling, n_quantiles,
-#                                                              g_comp, c_comp, g_feat, c_feat, pca_add, thr)
 
     scl = tml.DfScaler(method='robust')
     train_df = scl.fit_transform(train_df)

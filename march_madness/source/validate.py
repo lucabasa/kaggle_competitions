@@ -35,18 +35,6 @@ def _make_preds(train, y_train, test, model, kfolds, predict_proba):
     return fit_model, oof, imp_coef, predictions
 
 
-def point_to_proba(oof, y_train, preds):
-    dat = list(zip(np.clip(oof, -30, 30), np.where(y_train > 0, 1, 0)))
-    dat = sorted(dat, key = lambda x: x[0])
-    datdict = {dat[k][0]: dat[k][1] for k in range(len(dat))}
-
-    spline_model = UnivariateSpline(list(datdict.keys()), list(datdict.values()))  
-    spline_oof = spline_model(np.clip(oof, -30, 30))
-    spline_test = spline_model(np.clip(preds, -30, 30))
-    
-    return np.clip(spline_oof, 0.03, 0.97), np.clip(spline_test, 0.03, 0.97)
-
-
 def random_split(data, model, kfolds, target, test_size=0.2, predict_proba=False, tune=False, param_grid=None):
     
     train, test = tml.make_test(data, test_size=test_size, strat_feat='Season', random_state=324)
