@@ -1,17 +1,23 @@
 __author__ = 'lucabasa'
-__version__ = '4.1.0'
+__version__ = '5.0.0'
 __status__ = 'development'
 
 
 import pandas as pd 
-import numpy as np 
+import numpy as np
 
-import statsmodels.api as sm
-
-from source.aggregated_stats import process_details, full_stats, rolling_stats, highlow_seed
+from source.aggregated_stats import process_details, full_stats, rolling_stats
+from source.add_info import add_seed, add_rank, highlow_seed, add_stage, add_quality
 
 
 def make_teams_target(data, league):
+    '''
+    Take the playoff compact data and double the dataframe by inverting W and L
+    It also creates the ID column
+    
+    data: playoff compact results
+    league: men or women, useful to know when to cut the data
+    '''
     if league == 'men':
         limit = 2003
     else:
@@ -21,8 +27,8 @@ def make_teams_target(data, league):
 
     df['Team1'] = np.where((df.WTeamID < df.LTeamID), df.WTeamID, df.LTeamID)
     df['Team2'] = np.where((df.WTeamID > df.LTeamID), df.WTeamID, df.LTeamID)
-    df['target'] = np.where((df['WTeamID'] < df['LTeamID']),1,0)
-    df['target_points'] = np.where((df['WTeamID'] < df['LTeamID']),df.WScore - df.LScore,df.LScore - df.WScore)
+    df['target'] = np.where((df['WTeamID'] < df['LTeamID']), 1, 0)
+    df['target_points'] = np.where((df['WTeamID'] < df['LTeamID']), df.WScore - df.LScore, df.LScore - df.WScore)
     df.loc[df.WLoc == 'N', 'LLoc'] = 'N'
     df.loc[df.WLoc == 'H', 'LLoc'] = 'A'
     df.loc[df.WLoc == 'A', 'LLoc'] = 'H'
@@ -56,123 +62,16 @@ def make_teams_target(data, league):
     return df
 
 
-def add_rank(rank_location, total):
-    ranks = pd.read_csv(rank_location)
-    ranks = ranks[~(ranks.SystemName.isin(['AP', 'USA', 'DES', 'LYN', 'ACU', 
-                                           'TRX', 'D1A', 'JNG', 'BNT']))].copy()
-    ranks = ranks.groupby(['Season', 'TeamID', 'RankingDayNum'], as_index=False).OrdinalRank.mean()
-    ranks = ranks[ranks.RankingDayNum == 133]
-    del ranks['RankingDayNum']
-
-    total = pd.merge(total, ranks.rename(columns={'OrdinalRank': 'Rank'}), 
-                     on=['Season', 'TeamID'], how='left')
-
-    return total
-
-
-def add_seed(seed_location, total):
-    seed_data = pd.read_csv(seed_location)
-    seed_data['region'] = seed_data['Seed'].apply(lambda x: x[0])
-    seed_data['Seed'] = seed_data['Seed'].apply(lambda x: int(x[1:3]))
-    total = pd.merge(total, seed_data, how='left', on=['TeamID', 'Season'])
-    return total
-
-
-def add_stage(data):
-    data.loc[(data.T1_region == 'W') & (data.T2_region == 'X'), 'stage'] = 'finalfour'
-    data.loc[(data.T1_region == 'X') & (data.T2_region == 'W'), 'stage'] = 'finalfour'
-    data.loc[(data.T1_region == 'Y') & (data.T2_region == 'Z'), 'stage'] = 'finalfour'
-    data.loc[(data.T1_region == 'Z') & (data.T2_region == 'Y'), 'stage'] = 'finalfour'
-    data.loc[(data.T1_region == 'W') & (data.T2_region.isin(['Y', 'Z'])), 'stage'] = 'final'
-    data.loc[(data.T1_region == 'X') & (data.T2_region.isin(['Y', 'Z'])), 'stage'] = 'final'
-    data.loc[(data.T1_region == 'Y') & (data.T2_region.isin(['W', 'X'])), 'stage'] = 'final'
-    data.loc[(data.T1_region == 'Z') & (data.T2_region.isin(['W', 'X'])), 'stage'] = 'final'
-    data.loc[(data.T1_region == data.T2_region) & (data.T1_Seed + data.T2_Seed == 17), 'stage'] = 'Round1'
-    
-    fil = data.stage.isna()
-    
-    data.loc[fil & (data.T1_Seed.isin([1, 16])) & (data.T2_Seed.isin([8, 9])), 'stage'] = 'Round2'
-    data.loc[fil & (data.T1_Seed.isin([8, 9])) & (data.T2_Seed.isin([1, 16])), 'stage'] = 'Round2'
-    data.loc[fil & (data.T1_Seed.isin([5, 12])) & (data.T2_Seed.isin([4, 13])), 'stage'] = 'Round2'
-    data.loc[fil & (data.T1_Seed.isin([4, 13])) & (data.T2_Seed.isin([5, 12])), 'stage'] = 'Round2'
-    data.loc[fil & (data.T1_Seed.isin([6, 11])) & (data.T2_Seed.isin([3, 14])), 'stage'] = 'Round2'
-    data.loc[fil & (data.T1_Seed.isin([3, 14])) & (data.T2_Seed.isin([6, 11])), 'stage'] = 'Round2'
-    data.loc[fil & (data.T1_Seed.isin([7, 10])) & (data.T2_Seed.isin([2, 15])), 'stage'] = 'Round2'
-    data.loc[fil & (data.T1_Seed.isin([2, 15])) & (data.T2_Seed.isin([7, 10])), 'stage'] = 'Round2'
-    
-    fil = data.stage.isna()
-    
-    data.loc[fil & (data.T1_Seed.isin([1, 16, 8, 9])) & (data.T2_Seed.isin([4, 5, 12, 13])), 'stage'] = 'Round3'
-    data.loc[fil & (data.T1_Seed.isin([4, 5, 12, 13])) & (data.T2_Seed.isin([1, 16, 8, 9])), 'stage'] = 'Round3'
-    data.loc[fil & (data.T1_Seed.isin([3, 6, 11, 14])) & (data.T2_Seed.isin([2, 7, 10, 15])), 'stage'] = 'Round3'
-    data.loc[fil & (data.T1_Seed.isin([2, 7, 10, 15])) & (data.T2_Seed.isin([3, 6, 11, 14])), 'stage'] = 'Round3'
-    
-    fil = data.stage.isna()
-    
-    data.loc[fil & (data.T1_Seed.isin([1, 16, 8, 9, 4, 5, 12, 13])) & 
-             (data.T2_Seed.isin([3, 6, 11, 14, 2, 7, 10, 15])), 'stage'] = 'Round4'
-    data.loc[fil & (data.T1_Seed.isin([3, 6, 11, 14, 2, 7, 10, 15])) & 
-             (data.T2_Seed.isin([1, 16, 8, 9, 4, 5, 12, 13])), 'stage'] = 'Round4'
-    
-    data.loc[data.stage.isna(), 'stage'] = 'impossible'
-    
-    data = pd.get_dummies(data, columns=['stage'])
-    
-    del data['T1_region']
-    del data['T2_region']
-    
-    return data
-
-
-def team_quality(season, data):
-    formula = 'win~-1+T1_TeamID+T2_TeamID'
-    glm = sm.GLM.from_formula(formula=formula, 
-                              data=data.loc[data.Season==season,:], 
-                              family=sm.families.Binomial()).fit()
-    
-    quality = pd.DataFrame(glm.params).reset_index()
-    quality.columns = ['TeamID','quality']
-    quality['Season'] = season
-    quality['quality'] = np.exp(quality['quality'])
-    quality = quality.loc[quality.TeamID.str.contains('T1_')].reset_index(drop=True)
-    quality['TeamID'] = quality['TeamID'].apply(lambda x: x[10:14]).astype(int)
-    return quality
-
-
-def add_quality(data, reg):
-    reg = reg[['Season', 'WTeamID', 'LTeamID', 'WScore', 'LScore']].copy()
-    reg_inv = reg.copy()
-    
-    reg.columns = [x.replace('W','T1_').replace('L','T2_') for x in list(reg.columns)]
-    reg_inv.columns = [x.replace('L','T1_').replace('W','T2_') for x in list(reg_inv.columns)]
-
-    reg = pd.concat([reg, reg_inv]).sort_index().reset_index(drop = True)
-    
-    reg['PointDiff'] = reg['T1_Score'] - reg['T2_Score']
-    reg['T1_TeamID'] = reg['T1_TeamID'].astype(str)
-    reg['T2_TeamID'] = reg['T2_TeamID'].astype(str)
-    reg['win'] = np.where(reg['PointDiff']>0,1,0)
-    
-    all_quality = []
-    for year in reg.Season.unique():
-        all_quality.append(team_quality(year, reg))
-                           
-    all_quality = pd.concat(all_quality, ignore_index=True)
-    
-    team_quality_T1 = all_quality[['TeamID','Season','quality']]
-    team_quality_T1.columns = ['Team1','Season','T1_quality']
-    team_quality_T2 = all_quality[['TeamID','Season','quality']]
-    team_quality_T2.columns = ['Team2','Season','T2_quality']
-
-    data['Team1'] = data['Team1'].astype(int)
-    data['Team2'] = data['Team2'].astype(int)
-    data = data.merge(team_quality_T1, on = ['Team1','Season'], how = 'left')
-    data = data.merge(team_quality_T2, on = ['Team2','Season'], how = 'left')
-    
-    return data
-
-
 def make_training_data(details, targets):
+    '''
+    details: seasonal stats by team
+    targets: result of make_teams_target with each playoff game present twice
+    
+    Add the prefix T1_ and T2_ to the seasonal stats and add it to the playoff game
+    This creates the core training set where we use seasonal stats to predict the playoff games
+    
+    Add the delta_ statistics, given by the difference between T1_ and T2_
+    '''
     tmp = details.copy()
     tmp.columns = ['Season', 'Team1'] + \
                 ['T1_'+col for col in tmp.columns if col not in ['Season', 'TeamID']]
