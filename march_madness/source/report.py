@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '2.3.0'
+__version__ = '3.0.0'
 __status__ = 'development'
 
 
@@ -87,8 +87,6 @@ def report_points(train, test, y_train, y_test, oof, preds, plot=True):
     mse_test = round(np.sqrt(mean_squared_error(y_true=y_test, y_pred=preds)), 4)
     acc_oof = round(accuracy_score(y_true=(y_train>0).astype(int), y_pred=(oof>0).astype(int)),4)
     acc_test = round(accuracy_score(y_true=(y_test>0).astype(int), y_pred=(preds>0).astype(int)),4)
-    auc_oof = round(roc_auc_score(y_true=(y_train>0).astype(int), y_score=(oof>0).astype(int)),4)
-    auc_test = round(roc_auc_score(y_true=(y_test>0).astype(int), y_score=(preds>0).astype(int)),4)
     n_unsure_oof = round((abs(oof) < 2).mean() * 100, 2)
     n_unsure_test = round((abs(preds) < 2).mean() * 100, 2)
     
@@ -122,12 +120,16 @@ def report_points(train, test, y_train, y_test, oof, preds, plot=True):
     print(f'RMSE test: \t\t\t {mse_test}')
     print(f'Accuracy train: \t\t {acc_oof}')
     print(f'Accuracy test: \t\t\t {acc_test}')
-    print(f'AUC ROC train: \t\t\t {auc_oof}')
-    print(f'AUC ROC test: \t\t\t {auc_test}')
     print(f'Logloss train: \t\t\t {logloss_oof}')
     print(f'Logloss test: \t\t\t {logloss_test}')
     print(f'Unsure train: \t\t\t {n_unsure_oof}%')
     print(f'Unsure test: \t\t\t {n_unsure_test}%')
+    
+    return pd.DataFrame({'mae_oof': [mae_oof], 'mae_test': [mae_test], 
+                         'mse_oof': [mse_oof], 'mse_test': [mse_test], 
+                         'acc_oof': [acc_oof], 'acc_test': [acc_test], 
+                         'logloss_oof': [logloss_oof], 'logloss_test': [logloss_test], 
+                         'unsure_oof': [n_unsure_oof], 'unsure_test': [n_unsure_test]})
 
     
 def report_victory(y_train, y_test, oof, preds, probs=True, plot=True):
@@ -137,8 +139,6 @@ def report_victory(y_train, y_test, oof, preds, probs=True, plot=True):
         preds = np.clip(preds, 0.03, 0.97)
         acc_oof = round(accuracy_score(y_true=y_train, y_pred=(oof>0.5).astype(int)),4)
         acc_test = round(accuracy_score(y_true=y_test, y_pred=(preds>0.5).astype(int)),4)
-        auc_oof = round(roc_auc_score(y_true=y_train, y_score=(oof>0.5).astype(int)),4)
-        auc_test = round(roc_auc_score(y_true=y_test, y_score=(preds>0.5).astype(int)),4)
         n_unsure_oof = round((abs(oof - 0.5) < 0.1).mean() * 100, 4)
         n_unsure_test = round((abs(preds - 0.5) < 0.1).mean() * 100, 4)
         logloss_oof = round(log_loss(y_true=y_train, y_pred=oof), 4)
@@ -149,12 +149,14 @@ def report_victory(y_train, y_test, oof, preds, probs=True, plot=True):
     
     print(f'Accuracy train: \t\t {acc_oof}')
     print(f'Accuracy test: \t\t\t {acc_test}')
-    print(f'AUC ROC train: \t\t\t {auc_oof}')
-    print(f'AUC ROC test: \t\t\t {auc_test}')
     print(f'Logloss train: \t\t\t {logloss_oof}')
     print(f'Logloss test: \t\t\t {logloss_test}')
     print(f'Unsure train: \t\t\t {n_unsure_oof}%')
-    print(f'Unsure test: \t\t\t {n_unsure_test}%')    
+    print(f'Unsure test: \t\t\t {n_unsure_test}%')
+    
+    return pd.DataFrame({'acc_oof': [acc_oof], 'acc_test': [acc_test], 
+                         'logloss_oof': [logloss_oof], 'logloss_test': [logloss_test], 
+                         'unsure_oof': [n_unsure_oof], 'unsure_test': [n_unsure_test]})
     
 
 def yearly_wrapper(train, test, y_train, y_test, oof, preds, min_yr=2015, points=True):
@@ -164,13 +166,14 @@ def yearly_wrapper(train, test, y_train, y_test, oof, preds, min_yr=2015, points
     preds_total = []
     full_train = []
     full_test = []
+    res_summary = []
     for yr in train.keys():
         print(yr)
         print('\n')
         if points:
-            report_points(train[yr], test[yr], y_train[yr], y_test[yr], oof[yr], preds[yr], plot=False)
+            res = report_points(train[yr], test[yr], y_train[yr], y_test[yr], oof[yr], preds[yr], plot=False)
         else:
-            report_victory(y_train[yr], y_test[yr], oof[yr], preds[yr], probs=True, plot=False)
+            res = report_victory(y_train[yr], y_test[yr], oof[yr], preds[yr], probs=True, plot=False)
         print('\n')
         print('_'*40)
         print('\n')
@@ -181,6 +184,8 @@ def yearly_wrapper(train, test, y_train, y_test, oof, preds, min_yr=2015, points
             preds_total += list(preds[yr])
             full_train.append(train[yr])
             full_test.append(test[yr])
+            res['year'] = yr
+            res_summary.append(res)
         
     print('Total predictions')
     print('\n')
@@ -190,8 +195,11 @@ def yearly_wrapper(train, test, y_train, y_test, oof, preds, min_yr=2015, points
     full_test = pd.concat(full_test, ignore_index=True)
     oof_total = pd.Series(oof_total)
     preds_total = pd.Series(preds_total)
+    res_summary = pd.concat(res_summary, ignore_index=True)
     if points:
-        report_points(full_train, full_test, y_train_total, y_test_total, oof_total, preds_total, plot=True)
+        _ = report_points(full_train, full_test, y_train_total, y_test_total, oof_total, preds_total, plot=True)
     else:
-        report_victory(y_train_total, y_test_total, oof_total, preds_total, probs=True, plot=True)
+        _ = report_victory(y_train_total, y_test_total, oof_total, preds_total, probs=True, plot=True)
+        
+    return res_summary
     
