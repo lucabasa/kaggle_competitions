@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '3.0.0'
+__version__ = '3.0.1'
 __status__ = 'development'
 
 
@@ -195,11 +195,13 @@ def yearly_wrapper(train, test, y_train, y_test, oof, preds, min_yr=2015, points
     full_test = pd.concat(full_test, ignore_index=True)
     oof_total = pd.Series(oof_total)
     preds_total = pd.Series(preds_total)
-    res_summary = pd.concat(res_summary, ignore_index=True)
     if points:
-        _ = report_points(full_train, full_test, y_train_total, y_test_total, oof_total, preds_total, plot=True)
+        res = report_points(full_train, full_test, y_train_total, y_test_total, oof_total, preds_total, plot=True)
     else:
-        _ = report_victory(y_train_total, y_test_total, oof_total, preds_total, probs=True, plot=True)
+        res = report_victory(y_train_total, y_test_total, oof_total, preds_total, probs=True, plot=True)
+    res['year'] = 'total'
+    res_summary.append(res)
+    res_summary = pd.concat(res_summary, ignore_index=True)
         
     return res_summary
     
