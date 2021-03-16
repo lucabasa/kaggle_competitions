@@ -1,5 +1,5 @@
 __author__ = 'lucabasa'
-__version__ = '5.0.0'
+__version__ = '5.1.0'
 __status__ = 'development'
 
 
@@ -109,13 +109,17 @@ def prepare_data(league):
         playoff_compact = 'data/raw_women/W2021_Stage1/WNCAATourneyCompactResults.csv'
         seed = 'data/raw_women/W2021_Stage1/WNCAATourneySeeds.csv'
         rank = None
+        stage2 = None
+        stage2_yr = 2021
         save_loc = 'data/processed_women/'
     else:
-        regular_season = 'data/raw_men/M2021_Stage1/MRegularSeasonDetailedResults.csv'
-        playoff = 'data/raw_men/M2021_Stage1/MNCAATourneyDetailedResults.csv'
-        playoff_compact = 'data/raw_men/M2021_Stage1/MNCAATourneyCompactResults.csv'
-        seed = 'data/raw_men/M2021_Stage1/MNCAATourneySeeds.csv'
-        rank = 'data/raw_men/M2021_Stage1/MMasseyOrdinals.csv'
+        regular_season = 'data/raw_men/MDataFiles_Stage2/MRegularSeasonDetailedResults.csv'
+        playoff = 'data/raw_men/MDataFiles_Stage2/MNCAATourneyDetailedResults.csv'
+        playoff_compact = 'data/raw_men/MDataFiles_Stage2/MNCAATourneyCompactResults.csv'
+        seed = 'data/raw_men/MDataFiles_Stage2/MNCAATourneySeeds.csv'
+        rank = 'data/raw_men/MDataFiles_Stage2/MMasseyOrdinals.csv'
+        stage2 = 'data/raw_men/MDataFiles_Stage2/MSampleSubmissionStage2.csv'
+        stage2_yr = 2021
         save_loc = 'data/processed_men/'
     
     # Season stats
@@ -157,9 +161,25 @@ def prepare_data(league):
     all_reg = all_reg[all_reg.DayNum >= 136]  # remove pre tourney 
     all_reg = add_stage(all_reg)
     all_reg = add_quality(all_reg, reg)
-    all_reg.to_csv(save_loc + 'training_data.csv', index=False)
+    all_reg.to_csv(save_loc + 'training_data.csv', index=False)        
     
     playoff_stats.to_csv(save_loc + 'playoff_stats.csv', index=False)
+    
+    if stage2:
+        test_data_reg = regular_stats[regular_stats.Season == stage2_yr].copy()
+        sub = pd.read_csv(stage2)
+        sub['Team1'] = sub['ID'].apply(lambda x: int(x[5:9]))
+        sub['Team2'] = sub['ID'].apply(lambda x: int(x[10:]))
+        tmp = sub.copy()
+        tmp = tmp.rename(columns={'Team1': 'Team2', 'Team2': 'Team1'})
+        tmp = tmp[['Team1', 'Team2', 'Pred']]
+        sub = pd.concat([sub[['Team1', 'Team2', 'Pred']], tmp], ignore_index=True)
+        sub['Season'] = stage2_yr
+        test_data = make_training_data(test_data_reg, sub)
+        test_data = add_stage(test_data)
+        test_data = add_quality(test_data, reg[reg.Season == stage2_yr])
+        test_data.to_csv(save_loc + f'{stage2_yr}_test_data.csv', index=False)
+        return all_reg, test_data
     
     return all_reg
 
