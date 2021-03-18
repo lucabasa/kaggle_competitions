@@ -104,12 +104,12 @@ def prepare_data(league):
     save_loc = 'processed_data/' + league + '/'
 
     if league == 'women':
-        regular_season = 'data/raw_women/W2021_Stage1/WRegularSeasonDetailedResults.csv'
-        playoff = 'data/raw_women/W2021_Stage1/WNCAATourneyDetailedResults.csv'
-        playoff_compact = 'data/raw_women/W2021_Stage1/WNCAATourneyCompactResults.csv'
-        seed = 'data/raw_women/W2021_Stage1/WNCAATourneySeeds.csv'
+        regular_season = 'data/raw_women/WDataFiles_Stage2/WRegularSeasonDetailedResults.csv'
+        playoff = 'data/raw_women/WDataFiles_Stage2/WNCAATourneyDetailedResults.csv'
+        playoff_compact = 'data/raw_women/WDataFiles_Stage2/WNCAATourneyCompactResults.csv'
+        seed = 'data/raw_women/WDataFiles_Stage2/WNCAATourneySeeds.csv'
         rank = None
-        stage2 = None
+        stage2 = 'data/raw_women/WDataFiles_Stage2/WSampleSubmissionStage2.csv'
         stage2_yr = 2021
         save_loc = 'data/processed_women/'
     else:
