@@ -22,7 +22,7 @@ class feat_sel(BaseEstimator, TransformerMixin):
     '''
     def __init__(self, dtype='numeric'):
         self.dtype = dtype
- 
+
     def fit( self, X, y=None ):
         return self 
     

@@ -1,53 +1,19 @@
 __author__ = 'lucabasa'
-__version__ = '3.0.0'
+__version__ = '4.0.0'
 __status__ = 'development'
 
 
 import pandas as pd 
 import numpy as np 
 
-
-def big_wins(data, rank_loc):
-    df = data.copy()
-    
-    if rank_loc:
-        ranks = pd.read_csv(rank_loc)
-        # exclude ranks that are on very different value ranges
-        ranks = ranks[~(ranks.SystemName.isin(['AP', 'USA', 'DES', 'LYN', 'ACU', 
-                                               'TRX', 'D1A', 'JNG', 'BNT']))].copy()
-        mean_ranks = ranks.groupby(['Season', 'TeamID', 'RankingDayNum'], as_index=False).OrdinalRank.mean()
-
-        df = pd.merge(df, mean_ranks.rename(columns={'TeamID': 'WTeamID', 
-                                                    'RankingDayNum':'DayNum', 
-                                                    'OrdinalRank': 'WRank'}), 
-                    on=['Season', 'WTeamID', 'DayNum'], how='left')
-
-        df = pd.merge(df, mean_ranks.rename(columns={'TeamID': 'LTeamID', 
-                                                        'RankingDayNum':'DayNum', 
-                                                        'OrdinalRank': 'LRank'}), 
-                        on=['Season', 'LTeamID', 'DayNum'], how='left')
-
-        df = df.fillna(1000)
-
-        df['Wtop_team'] = 0
-        df.loc[df.LRank <= 30, 'Wtop_team'] = 1
-
-        df['Wupset'] = 0
-        df.loc[df.WRank - df.LRank > 15, 'Wupset'] = 1
-        
-        del df['WRank']
-        del df['LRank']
-    
-    df['WOT_win'] = 0
-    df.loc[df.NumOT > 0, 'WOT_win'] = 1
-    
-    df['WAway'] = 0
-    df.loc[df.WLoc!='H', 'WAway'] = 1
-    
-    return df
+from source.add_info import big_wins, perc_OT_win, add_days
 
 
 def process_details(data, rank_loc=None):
+    '''
+    This function processes individual games by creating advanced statistics
+    It also flags if the win was a big one (difficult game, OT win, or Away win)
+    '''
     df = data.copy()
     
     df = big_wins(df, rank_loc)
@@ -116,25 +82,19 @@ def process_details(data, rank_loc=None):
     
     for col in stats:
         df[col+'_diff'] = df['W'+col] - df['L'+col]
-        df[col+'_advantage'] = (df[col+'_diff'] > 0).astype(int)
+        #df[col+'_advantage'] = (df[col+'_diff'] > 0).astype(int)
     
     return df
 
 
-def perc_OT_win(data):
-    df = data[['Season', 'TeamID', 'NumOT', 'OT_win']].copy()
-    df['has_OT'] = np.where(df.NumOT > 0, 1, 0)
-    
-    df = df.groupby(['Season', 'TeamID', 'has_OT'], as_index=False).OT_win.mean()
-    df = df[df.has_OT > 0].copy()
-    del df['has_OT']
-    
-    return df.rename(columns={'OT_win': 'OT_win_perc'})
-
-
 def full_stats(data):
+    '''
+    Take per game details, double the dataframe to account for lost games as well,
+    Add percentage of OT wins
+    Create seasonal means and percentages (like shooting percentage over the season)
+    '''
     df = data.copy()
-    
+
     to_select = [col for col in df.columns if col.startswith('W') 
                                              and '_perc' not in col 
                                              and 'Loc' not in col]
@@ -142,7 +102,7 @@ def full_stats(data):
     df_W = df[['Season', 'DayNum', 'NumOT'] + to_select].copy()
     df_W.columns = df_W.columns.str.replace('W','')
     df_W['N_wins'] = 1
-    
+
     to_select = [col for col in df.columns if col.startswith('L') 
                                              and '_perc' not in col 
                                              and 'Loc' not in col]
@@ -160,16 +120,16 @@ def full_stats(data):
         df_L['upset'] = 0
 
     df = pd.concat([df_W, df_L], sort=True)
-    
+
     del df['DayNum']
-    
+
     OT_perc = perc_OT_win(df)
-    
+
     not_use = ['NumOT']
     to_use = [col for col in df.columns if col not in not_use]
-    
+
     means = df[to_use].groupby(['Season','TeamID'], as_index=False).mean()
-    
+
     sums = df[to_use].groupby(['Season','TeamID'], as_index=False).sum()
     sums['FGM_perc'] = sums.FGM / sums.FGA
     sums['FGM2_perc'] = sums.FGM2 / sums.FGA2
@@ -181,31 +141,14 @@ def full_stats(data):
     to_use = ['Season', 'TeamID', 'FGM_perc',
               'FGM2_perc', 'FGM3_perc', 'FT_perc', 
               'FGM_no_ast_perc', 'True_shooting_perc', 'Opp_True_shooting_perc']
-    
+
     sums = sums[to_use].fillna(0)
-    
+
     stats_tot = pd.merge(means, sums, on=['Season', 'TeamID'])
     stats_tot = pd.merge(stats_tot, OT_perc, on=['Season', 'TeamID'], how='left')
     stats_tot['OT_win_perc'] = stats_tot['OT_win_perc'].fillna(0)
-  
+    
     return stats_tot
-
-
-def add_days(data, info, date=True):
-    df = data.copy()
-    seasons = pd.read_csv(info)
-    
-    df = pd.merge(df, seasons[['Season', 'DayZero']], on='Season')
-    df['DayZero'] = pd.to_datetime(df.DayZero)
-    
-    if date:
-        df['GameDay'] = df.apply(lambda x: x['DayZero'] + pd.offsets.DateOffset(days=x['DayNum']), 1)
-    else:
-        df['DayNum'] = (df['GameDay'] - df['DayZero']).dt.days
-    
-    del df['DayZero']
-    
-    return df
 
 
 def rolling_stats(data, season_info, window='30d'):

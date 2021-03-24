@@ -1,15 +1,23 @@
 __author__ = 'lucabasa'
-__version__ = '3.0.1'
+__version__ = '5.1.0'
 __status__ = 'development'
 
 
 import pandas as pd 
-import numpy as np 
+import numpy as np
 
 from source.aggregated_stats import process_details, full_stats, rolling_stats
+from source.add_info import add_seed, add_rank, highlow_seed, add_stage, add_quality
 
 
 def make_teams_target(data, league):
+    '''
+    Take the playoff compact data and double the dataframe by inverting W and L
+    It also creates the ID column
+    
+    data: playoff compact results
+    league: men or women, useful to know when to cut the data
+    '''
     if league == 'men':
         limit = 2003
     else:
@@ -19,8 +27,8 @@ def make_teams_target(data, league):
 
     df['Team1'] = np.where((df.WTeamID < df.LTeamID), df.WTeamID, df.LTeamID)
     df['Team2'] = np.where((df.WTeamID > df.LTeamID), df.WTeamID, df.LTeamID)
-    df['target'] = np.where((df['WTeamID'] < df['LTeamID']),1,0)
-    df['target_points'] = np.where((df['WTeamID'] < df['LTeamID']),df.WScore - df.LScore,df.LScore - df.WScore)
+    df['target'] = np.where((df['WTeamID'] < df['LTeamID']), 1, 0)
+    df['target_points'] = np.where((df['WTeamID'] < df['LTeamID']), df.WScore - df.LScore, df.LScore - df.WScore)
     df.loc[df.WLoc == 'N', 'LLoc'] = 'N'
     df.loc[df.WLoc == 'H', 'LLoc'] = 'A'
     df.loc[df.WLoc == 'A', 'LLoc'] = 'H'
@@ -54,75 +62,16 @@ def make_teams_target(data, league):
     return df
 
 
-def add_rank(rank_location, total):
-    ranks = pd.read_csv(rank_location)
-    ranks = ranks[~(ranks.SystemName.isin(['AP', 'USA', 'DES', 'LYN', 'ACU', 
-                                           'TRX', 'D1A', 'JNG', 'BNT']))].copy()
-    ranks = ranks.groupby(['Season', 'TeamID', 'RankingDayNum'], as_index=False).OrdinalRank.mean()
-    ranks = ranks[ranks.RankingDayNum == 133]
-    del ranks['RankingDayNum']
-
-    total = pd.merge(total, ranks.rename(columns={'OrdinalRank': 'Rank'}), 
-                     on=['Season', 'TeamID'], how='left')
-
-    return total
-
-
-def add_seed(seed_location, total):
-    seed_data = pd.read_csv(seed_location)
-    seed_data['region'] = seed_data['Seed'].apply(lambda x: x[0])
-    seed_data['Seed'] = seed_data['Seed'].apply(lambda x: int(x[1:3]))
-    total = pd.merge(total, seed_data, how='left', on=['TeamID', 'Season'])
-    return total
-
-
-def add_stage(data):
-    data.loc[(data.T1_region == 'W') & (data.T2_region == 'X'), 'stage'] = 'finalfour'
-    data.loc[(data.T1_region == 'X') & (data.T2_region == 'W'), 'stage'] = 'finalfour'
-    data.loc[(data.T1_region == 'Y') & (data.T2_region == 'Z'), 'stage'] = 'finalfour'
-    data.loc[(data.T1_region == 'Z') & (data.T2_region == 'Y'), 'stage'] = 'finalfour'
-    data.loc[(data.T1_region == 'W') & (data.T2_region.isin(['Y', 'Z'])), 'stage'] = 'final'
-    data.loc[(data.T1_region == 'X') & (data.T2_region.isin(['Y', 'Z'])), 'stage'] = 'final'
-    data.loc[(data.T1_region == 'Y') & (data.T2_region.isin(['W', 'X'])), 'stage'] = 'final'
-    data.loc[(data.T1_region == 'Z') & (data.T2_region.isin(['W', 'X'])), 'stage'] = 'final'
-    data.loc[(data.T1_region == data.T2_region) & (data.T1_Seed + data.T2_Seed == 17), 'stage'] = 'Round1'
-    
-    fil = data.stage.isna()
-    
-    data.loc[fil & (data.T1_Seed.isin([1, 16])) & (data.T2_Seed.isin([8, 9])), 'stage'] = 'Round2'
-    data.loc[fil & (data.T1_Seed.isin([8, 9])) & (data.T2_Seed.isin([1, 16])), 'stage'] = 'Round2'
-    data.loc[fil & (data.T1_Seed.isin([5, 12])) & (data.T2_Seed.isin([4, 13])), 'stage'] = 'Round2'
-    data.loc[fil & (data.T1_Seed.isin([4, 13])) & (data.T2_Seed.isin([5, 12])), 'stage'] = 'Round2'
-    data.loc[fil & (data.T1_Seed.isin([6, 11])) & (data.T2_Seed.isin([3, 14])), 'stage'] = 'Round2'
-    data.loc[fil & (data.T1_Seed.isin([3, 14])) & (data.T2_Seed.isin([6, 11])), 'stage'] = 'Round2'
-    data.loc[fil & (data.T1_Seed.isin([7, 10])) & (data.T2_Seed.isin([2, 15])), 'stage'] = 'Round2'
-    data.loc[fil & (data.T1_Seed.isin([2, 15])) & (data.T2_Seed.isin([7, 10])), 'stage'] = 'Round2'
-    
-    fil = data.stage.isna()
-    
-    data.loc[fil & (data.T1_Seed.isin([1, 16, 8, 9])) & (data.T2_Seed.isin([4, 5, 12, 13])), 'stage'] = 'Round3'
-    data.loc[fil & (data.T1_Seed.isin([4, 5, 12, 13])) & (data.T2_Seed.isin([1, 16, 8, 9])), 'stage'] = 'Round3'
-    data.loc[fil & (data.T1_Seed.isin([3, 6, 11, 14])) & (data.T2_Seed.isin([2, 7, 10, 15])), 'stage'] = 'Round3'
-    data.loc[fil & (data.T1_Seed.isin([2, 7, 10, 15])) & (data.T2_Seed.isin([3, 6, 11, 14])), 'stage'] = 'Round3'
-    
-    fil = data.stage.isna()
-    
-    data.loc[fil & (data.T1_Seed.isin([1, 16, 8, 9, 4, 5, 12, 13])) & 
-             (data.T2_Seed.isin([3, 6, 11, 14, 2, 7, 10, 15])), 'stage'] = 'Round4'
-    data.loc[fil & (data.T1_Seed.isin([3, 6, 11, 14, 2, 7, 10, 15])) & 
-             (data.T2_Seed.isin([1, 16, 8, 9, 4, 5, 12, 13])), 'stage'] = 'Round4'
-    
-    data.loc[data.stage.isna(), 'stage'] = 'impossible'
-    
-    data = pd.get_dummies(data, columns=['stage'])
-    
-    del data['T1_region']
-    del data['T2_region']
-    
-    return data
-
-
 def make_training_data(details, targets):
+    '''
+    details: seasonal stats by team
+    targets: result of make_teams_target with each playoff game present twice
+    
+    Add the prefix T1_ and T2_ to the seasonal stats and add it to the playoff game
+    This creates the core training set where we use seasonal stats to predict the playoff games
+    
+    Add the delta_ statistics, given by the difference between T1_ and T2_
+    '''
     tmp = details.copy()
     tmp.columns = ['Season', 'Team1'] + \
                 ['T1_'+col for col in tmp.columns if col not in ['Season', 'TeamID']]
@@ -134,6 +83,7 @@ def make_training_data(details, targets):
     total = pd.merge(total, tmp, on=['Season', 'Team2'], how='left')
     
     if total.isnull().any().any():
+        print(total.columns[total.isnull().any()])
         raise ValueError('Something went wrong')
         
     stats = [col[3:] for col in total.columns if 'T1_' in col and 'region' not in col]
@@ -159,6 +109,8 @@ def prepare_data(league):
         playoff_compact = 'data/raw_women/WDataFiles_Stage2/WNCAATourneyCompactResults.csv'
         seed = 'data/raw_women/WDataFiles_Stage2/WNCAATourneySeeds.csv'
         rank = None
+        stage2 = 'data/raw_women/WDataFiles_Stage2/WSampleSubmissionStage2.csv'
+        stage2_yr = 2021
         save_loc = 'data/processed_women/'
     else:
         regular_season = 'data/raw_men/MDataFiles_Stage2/MRegularSeasonDetailedResults.csv'
@@ -166,6 +118,8 @@ def prepare_data(league):
         playoff_compact = 'data/raw_men/MDataFiles_Stage2/MNCAATourneyCompactResults.csv'
         seed = 'data/raw_men/MDataFiles_Stage2/MNCAATourneySeeds.csv'
         rank = 'data/raw_men/MDataFiles_Stage2/MMasseyOrdinals.csv'
+        stage2 = 'data/raw_men/MDataFiles_Stage2/MSampleSubmissionStage2.csv'
+        stage2_yr = 2021
         save_loc = 'data/processed_men/'
     
     # Season stats
@@ -175,12 +129,12 @@ def prepare_data(league):
     regular_stats = full_stats(reg)
     
     # Last 2 weeks stats
-#     last2weeks = reg[reg.DayNum >= 118].copy()
-#     last2weeks = full_stats(last2weeks)
-#     last2weeks.columns = ['L2W_' + col for col in last2weeks]
-#     last2weeks.rename(columns={'L2W_Season': 'Season', 'L2W_TeamID': 'TeamID'}, inplace=True)
+    last2weeks = reg[reg.DayNum >= 118].copy()
+    last2weeks = full_stats(last2weeks)
+    last2weeks.columns = ['L2W_' + col for col in last2weeks]
+    last2weeks.rename(columns={'L2W_Season': 'Season', 'L2W_TeamID': 'TeamID'}, inplace=True)
     
-#     regular_stats = pd.merge(regular_stats, last2weeks, on=['Season', 'TeamID'], how='left')
+    regular_stats = pd.merge(regular_stats, last2weeks, on=['Season', 'TeamID'], how='left')
     
     regular_stats = add_seed(seed, regular_stats)    
     
@@ -200,12 +154,32 @@ def prepare_data(league):
     target_data = pd.read_csv(playoff_compact)
     target_data = make_teams_target(target_data, league)
     
+    # Add high and low seed wins perc
+    regular_stats = highlow_seed(regular_stats, reg, seed)
+    
     all_reg = make_training_data(regular_stats, target_data)
     all_reg = all_reg[all_reg.DayNum >= 136]  # remove pre tourney 
     all_reg = add_stage(all_reg)
-    all_reg.to_csv(save_loc + 'training_data.csv', index=False)
+    all_reg = add_quality(all_reg, reg)
+    all_reg.to_csv(save_loc + 'training_data.csv', index=False)        
     
     playoff_stats.to_csv(save_loc + 'playoff_stats.csv', index=False)
+    
+    if stage2:
+        test_data_reg = regular_stats[regular_stats.Season == stage2_yr].copy()
+        sub = pd.read_csv(stage2)
+        sub['Team1'] = sub['ID'].apply(lambda x: int(x[5:9]))
+        sub['Team2'] = sub['ID'].apply(lambda x: int(x[10:]))
+        tmp = sub.copy()
+        tmp = tmp.rename(columns={'Team1': 'Team2', 'Team2': 'Team1'})
+        tmp = tmp[['Team1', 'Team2', 'Pred']]
+        sub = pd.concat([sub[['Team1', 'Team2', 'Pred']], tmp], ignore_index=True)
+        sub['Season'] = stage2_yr
+        test_data = make_training_data(test_data_reg, sub)
+        test_data = add_stage(test_data)
+        test_data = add_quality(test_data, reg[reg.Season == stage2_yr])
+        test_data.to_csv(save_loc + f'{stage2_yr}_test_data.csv', index=False)
+        return all_reg, test_data
     
     return all_reg
 
