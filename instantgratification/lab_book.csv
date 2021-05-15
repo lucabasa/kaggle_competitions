@@ -1,0 +1,10 @@
+Preparation,Model,script_name,oof_auc,oof_acc,oof_f1,kaggle_auc,Comments
+"5 folds, making the magic a category",LGB with 100 stopping rounds,kernel_v8,0.762,0.694,0.694,0.78381,The magic is so much more important than anything else
+"5 folds, dropping the magic",LGB with 100 stopping rounds,kernel_v8,0.562,0.544,0.541,0.56641,This was a bad idea
+"512 models, var thr=1.5, 11 skfolds",SVC poly 4,kernel_v12,0.926,0.864,0.863,0.92894,First with U shape predictions (bell shape before)
+"512 models, var thr=1.5, 25 skfolds",SVC poly 4,kernel_v12,0.928,0.866,0.866,0.92782,"Just changed the number of folds, better CV, worse LB"
+"512 models, var thr=1.5, 25 skfolds",Scaler + SVC poly 4,kernel_v12,0.946,0.892,0.891,0.94686,"SVC needs a Scaler, now we know how much it helps"
+"512 models, var thr=1.5, 25 skfolds","Scaler + SVC poly 4 blend with Scaler + logit (l1, 0.05)",kernel_v18,0.954,,,0.95493,"Adding the logit helps, the blend is 0.566 SVC, logit with a 0.77 auc and bell shape predictions"
+"512 models, var thr=1.5, 25 skfolds","Scaler + SVC poly 4 blend with Scaler + logit (saga, l1, 0.1)",kernel_v18,0.956,,,0.95634,"Saga logit has 0.79 auc and less bell shape, the blend goes 0.625 SVC"
+"512 models, var thr=1.5, 25 skfolds","Scaler + SVC poly 4 blend with Scaler + logit (saga, l1, 1)",kernel_v18,0.956,,,0.95687,"Increased C to 1 for logit (now 0.81 auc), no more bell shape, blend goes 0.703 SVC"
+"512 models, var thr=1.5, 25 skfolds","Scaler + logit (saga, l1, 0.5)",logit_training,0.8095,0.7359,0.736,,"Lower C gives better result but more uniform preds, using pca doesn’t help"
