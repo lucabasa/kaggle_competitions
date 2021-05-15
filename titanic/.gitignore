@@ -3,5 +3,5 @@ submissions/*
 plots/*
 __pycache__/*
 oof_pred/*
-
+titanic/
 .ipynb_checkpoints/
