@@ -1,4 +1,4 @@
-jupyterlab==3.0.12
+jupyterlab==3.0.17
 lightgbm==3.2.0
 matplotlib==3.4.1
 numpy==1.20.2
