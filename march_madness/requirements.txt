@@ -1,5 +1,5 @@
 Cython==0.29.22
-jupyterlab==3.0.9
+jupyterlab==3.1.17
 lightgbm==3.1.1
 matplotlib==3.3.4
 numpy==1.20.1
