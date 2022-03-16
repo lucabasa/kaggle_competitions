@@ -110,16 +110,16 @@ def prepare_data(league):
         seed = 'data/raw_women/WDataFiles_Stage2/WNCAATourneySeeds.csv'
         rank = None
         stage2 = 'data/raw_women/WDataFiles_Stage2/WSampleSubmissionStage2.csv'
-        stage2_yr = 2021
+        stage2_yr = 2022
         save_loc = 'data/processed_women/'
     else:
         regular_season = 'data/raw_men/MDataFiles_Stage2/MRegularSeasonDetailedResults.csv'
         playoff = 'data/raw_men/MDataFiles_Stage2/MNCAATourneyDetailedResults.csv'
         playoff_compact = 'data/raw_men/MDataFiles_Stage2/MNCAATourneyCompactResults.csv'
         seed = 'data/raw_men/MDataFiles_Stage2/MNCAATourneySeeds.csv'
-        rank = 'data/raw_men/MDataFiles_Stage2/MMasseyOrdinals.csv'
+        rank = 'data/raw_men/MDataFiles_Stage2/MMasseyOrdinals_thruDay128.csv'
         stage2 = 'data/raw_men/MDataFiles_Stage2/MSampleSubmissionStage2.csv'
-        stage2_yr = 2021
+        stage2_yr = 2022
         save_loc = 'data/processed_men/'
     
     # Season stats

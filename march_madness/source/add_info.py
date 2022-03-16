@@ -84,7 +84,7 @@ def add_seed(seed_location, total):
     return total
 
 
-def add_rank(rank_location, total):
+def add_rank(rank_location, total, season=None):
     '''
     Read the Rank csv, exclude some of them, aggregate the ranks by day and team
     Then take the Rank on the last regular season day and add it to the Seasonal stats
@@ -96,7 +96,7 @@ def add_rank(rank_location, total):
     ranks = ranks[~(ranks.SystemName.isin(['AP', 'USA', 'DES', 'LYN', 'ACU', 
                                            'TRX', 'D1A', 'JNG', 'BNT']))].copy()
     ranks = ranks.groupby(['Season', 'TeamID', 'RankingDayNum'], as_index=False).OrdinalRank.mean()
-    ranks = ranks[ranks.RankingDayNum == 133]
+    ranks = ranks[((ranks.RankingDayNum == 133) & (ranks.Season != 2022)) | ((ranks.RankingDayNum == 128) & (ranks.Season == 2022))]
     del ranks['RankingDayNum']
 
     total = pd.merge(total, ranks.rename(columns={'OrdinalRank': 'Rank'}), 
