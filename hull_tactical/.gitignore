@@ -6,4 +6,4 @@ oof/
 hull/
 __pycache__/
 kaggle_evaluation/
-
+*.parquet
