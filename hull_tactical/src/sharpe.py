@@ -24,7 +24,7 @@ def score_sharpe(solution: pd.DataFrame, submission: pd.DataFrame, row_id_column
     if not pandas.api.types.is_numeric_dtype(submission['prediction']):
         raise ParticipantVisibleError('Predictions must be numeric')
 
-    solution = solution
+    solution = solution.copy()
     solution['position'] = submission['prediction']
 
     if solution['position'].max() > MAX_INVESTMENT:
@@ -71,3 +71,4 @@ def score_sharpe(solution: pd.DataFrame, submission: pd.DataFrame, row_id_column
     # Adjust the Sharpe ratio by the volatility and return penalty
     adjusted_sharpe = sharpe / (vol_penalty * return_penalty)
     return min(float(adjusted_sharpe), 1_000_000)
+

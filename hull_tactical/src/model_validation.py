@@ -5,6 +5,11 @@ import tubesml as tml
 from tubesml.base import BaseTransformer
 
 from sklearn.pipeline import Pipeline
+from sklearn.metrics import r2_score, mean_absolute_error
+
+from src.sharpe import score_sharpe
+
+import matplotlib.pyplot as plt
 
 
 class TSCrossValidate(tml.CrossValidate):
@@ -52,24 +57,39 @@ class TSCrossValidate(tml.CrossValidate):
             trn_data = self.train.iloc[train_index, :].reset_index(drop=True)
             val_data = self.train.iloc[test_index, :].reset_index(drop=True)
 
+            og_val_data = val_data.copy()
+            og_trn_data = trn_data.copy()
+
             trn_target, val_target = self._get_train_val_target(train_index, test_index)
 
             trn_data, val_data, test_data, model, transf_pipe = self._prepare_cv_iteration(
                 trn_data, val_data, trn_target
             )
-
+            
             if self.early_stopping:
                 # Fit the model with early stopping
-                model.fit(
-                    trn_data, trn_target, eval_set=[(trn_data, trn_target), (val_data, val_target)], **self.fit_params
-                )
+                if "sample_weight" in self.fit_params.keys():
+                    sw = og_trn_data[self.fit_params["sample_weight"]]
+                    new_params = {k: v for k, v in self.fit_params.items() if k != "sample_weight"}
+                    model.fit(
+                        trn_data, trn_target, eval_set=[(trn_data, trn_target), (val_data, val_target)], sample_weight=sw, **new_params
+                    )
+                else:
+                    model.fit(
+                        trn_data, trn_target, eval_set=[(trn_data, trn_target), (val_data, val_target)], **self.fit_params
+                    )
                 # store iteration used
                 try:
                     self.iteration.append(model.best_iteration)
                 except AttributeError:
                     self.iteration.append(model.best_iteration_)
             else:
-                model.fit(trn_data, trn_target, **self.fit_params)
+                if "sample_weight" in self.fit_params.keys():
+                    sw = og_trn_data[self.fit_params["sample_weight"]]
+                    new_params = {k: v for k, v in self.fit_params.items() if k != "sample_weight"}
+                    model.fit(trn_data, trn_target, sample_weight=sw, **new_params)
+                else:
+                    model.fit(trn_data, trn_target, **self.fit_params)
 
             if self.predict_proba:
                 if self.class_pos is None:
@@ -98,7 +118,7 @@ class TSCrossValidate(tml.CrossValidate):
             if self.shap:
                 self._fold_shap(model, trn_data)
 
-            folds_res.append(fold_evaluation(test_set=val_data,
+            folds_res.append(fold_evaluation(test_set=og_val_data,
                                              target=val_target,
                                              predictions=predictions,
                                              fold_n=n_fold))
@@ -130,10 +150,24 @@ def fold_evaluation(test_set, target, predictions, fold_n):
     return df_eval
 
 
-def summary_evaluation(df_eval):
+def summary_evaluation(df_eval, orig_df, factor=400):
     print(f"Mean Squared Error: {df_eval['error_sqr'].mean().round(5)}")
+    print(f'R2: {r2_score(y_true=df_eval["target"], y_pred=df_eval["predictions"])}')
+    print(f"MAE: {mean_absolute_error(y_true=df_eval['target'], y_pred=df_eval['predictions'])}")
     print(df_eval.groupby("fold")["error_sqr"].agg(["min", "mean", "max"]))
 
-    df_eval.groupby("n_days")["error_sqr"].median().plot()
+    df_eval["prediction"] = np.clip(df_eval["predictions"] * factor + 1, 0, 2)
+    print(f"Sharpe: {score_sharpe(solution=orig_df[orig_df["date_id"] >= df_eval["date_id"].min()].reset_index(drop=True),
+                                  submission=df_eval, row_id_column_name='')}")
+    for n, group in df_eval.groupby("fold"):
+        print(n, score_sharpe(solution=orig_df[(orig_df["date_id"] >= group["date_id"].min()) &
+                                               (orig_df["date_id"] <= group["date_id"].max())].reset_index(drop=True).copy(),
+                              submission=group.reset_index(), row_id_column_name=""))
+
+    df_eval.groupby("n_days")[["error_sqr"]].quantile([.25, .50, .75]).unstack(1).plot()
+    plt.show()
+
+    df_eval["prediction"].plot()
+    plt.show()
 
     tml.plot_regression_predictions(data=df_eval, true_label=df_eval["target"], pred_label=df_eval["predictions"])
