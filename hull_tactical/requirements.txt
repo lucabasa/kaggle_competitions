@@ -1,0 +1,17 @@
+matplotlib==3.7.2
+lightgbm==4.5.0
+numpy==1.26.4
+pandas==2.2.3
+scikit-learn==1.2.2
+scipy==1.15.2
+seaborn==0.12.2
+shap==0.44.1
+xgboost==2.0.3
+tubesml==1.0.2
+statsmodels==0.14.4
+google==3.0.0
+grpcio==1.76.0
+ipykernel==7.1.0
+polars==1.35.1
+pyarrow==22.0.0
+protobuf==6.33.0

@@ -1,0 +1,9 @@
+data_raw/
+data_processed/
+plots/
+oof/
+.ipynb_checkpoints/
+hull/
+__pycache__/
+kaggle_evaluation/
+*.parquet
