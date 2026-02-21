@@ -16,7 +16,8 @@ def process_details(data, rank_loc=None):
     '''
     df = data.copy()
     
-    df = big_wins(df, rank_loc)
+    if rank_loc is not None:
+        df = big_wins(df, rank_loc)
         
     for prefix in ['W', 'L']:
         df[prefix+'FG_perc'] = df[prefix+'FGM'] / df[prefix+'FGA']
