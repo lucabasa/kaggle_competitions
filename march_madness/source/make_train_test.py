@@ -100,7 +100,7 @@ def make_training_data(details, targets):
     return total
 
 
-def prepare_data(league):
+def prepare_data(league, l2w=True):
     save_loc = 'processed_data/' + league + '/'
 
     if league == 'women':
@@ -129,12 +129,13 @@ def prepare_data(league):
     regular_stats = full_stats(reg)
     
     # Last 2 weeks stats
-    last2weeks = reg[reg.DayNum >= 118].copy()
-    last2weeks = full_stats(last2weeks)
-    last2weeks.columns = ['L2W_' + col for col in last2weeks]
-    last2weeks.rename(columns={'L2W_Season': 'Season', 'L2W_TeamID': 'TeamID'}, inplace=True)
-    
-    regular_stats = pd.merge(regular_stats, last2weeks, on=['Season', 'TeamID'], how='left')
+    if l2w:
+        last2weeks = reg[reg.DayNum >= 118].copy()
+        last2weeks = full_stats(last2weeks)
+        last2weeks.columns = ['L2W_' + col for col in last2weeks]
+        last2weeks.rename(columns={'L2W_Season': 'Season', 'L2W_TeamID': 'TeamID'}, inplace=True)
+        
+        regular_stats = pd.merge(regular_stats, last2weeks, on=['Season', 'TeamID'], how='left')
     
     regular_stats = add_seed(seed, regular_stats)    
     
