@@ -15,9 +15,16 @@ def process_details(data, rank_loc=None):
     It also flags if the win was a big one (difficult game, OT win, or Away win)
     """
     df = data.copy()
+
+    # adjustment factor for overtimes, as more stats are accumulated during overtimes
+    adjot = (40 + 5 * df["NumOT"]) / 40
+    adjcols = ["LScore", "WScore", 
+               "LFGM", "LFGA", "LFGM3", "LFGA3", "LFTM", "LFTA", "LOR", "LDR", "LAst", "LTO", "LStl", "LBlk", "LPF",
+               "WFGM", "WFGA", "WFGM3", "WFGA3", "WFTM", "WFTA", "WOR", "WDR", "WAst", "WTO", "WStl", "WBlk", "WPF"]
+    for col in adjcols:
+        df[col] = df[col] / adjot 
     
-    if rank_loc is not None:
-        df = big_wins(df, rank_loc)
+    df = big_wins(df, rank_loc)
         
     for prefix in ["W", "L"]:
         df[prefix+"FG_perc"] = df[prefix+"FGM"] / df[prefix+"FGA"]
@@ -33,8 +40,8 @@ def process_details(data, rank_loc=None):
         df[prefix+"possessions"] = df[prefix+"FGA"] - df[prefix+"OR"] + df[prefix+"TO"] + 0.44*df[prefix+"FTA"]
         df[prefix+"off_rating"] = df[prefix+"Score"] / df[prefix+"possessions"] * 100
         df[prefix+"shtg_opportunity"] = 1 + (df[prefix+"OR"] - df[prefix+"TO"]) / df[prefix+"possessions"]
-        df[prefix+"TO_perposs"] = df[prefix+"TO"] / df[prefix+"possessions"]
-        df[prefix+"Ast_TO_ratio"] = df[prefix+"Ast"] / df[prefix+"TO"]
+        df[prefix+"TO_perposs"] = df[prefix+"TO"] / (df[prefix+"possessions"] + 0.0001)
+        df[prefix+"Ast_TO_ratio"] = df[prefix+"Ast"] / (df[prefix+"TO"] + 0.0001)
         df[prefix+"True_shooting_perc"] = 0.5 * df[prefix+"Score"] / (df[prefix+"FGA"] + 0.44 * df[prefix+"FTA"])
         df[prefix+"Eff_FG_perc"] = (df[prefix+"FGM"] + 0.5*df[prefix+"FGM3"]) / df[prefix+"FGA"]
         df[prefix+"IE_temp"] = df[prefix+"Score"] + df[prefix+"FTM"] + df[prefix+"FGM"] + \

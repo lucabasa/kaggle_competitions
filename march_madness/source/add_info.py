@@ -19,7 +19,7 @@ def big_wins(data, rank_loc=None):
     """
     df = data.copy()
     
-    if rank_loc:
+    if rank_loc is not None:
         ranks = pd.read_csv(rank_loc)
         # exclude ranks that are on very different value ranges
         ranks = ranks[~(ranks.SystemName.isin(["AP", "USA", "DES", "LYN", "ACU", 
@@ -255,6 +255,8 @@ def add_quality(data, reg):
     data["Team2"] = data["Team2"].astype(int)
     data = data.merge(team_quality_T1, on = ["Team1","Season"], how = "left")
     data = data.merge(team_quality_T2, on = ["Team2","Season"], how = "left")
+
+    data["delta_quality"] = data["T1_quality"] - data["T2_quality"]
     
     return data
 
@@ -274,3 +276,42 @@ def add_days(data, info, date=True):
     del df["DayZero"]
     
     return df
+
+
+def update_elo(winner_elo, loser_elo):
+    expected_win = expected_result(winner_elo, loser_elo)
+    change_in_elo = 100 * (1 - expected_win)
+    winner_elo += change_in_elo
+    loser_elo -= change_in_elo
+    return winner_elo, loser_elo
+
+
+def expected_result(elo_a, elo_b):
+    return 1.0 / (1 + 10 ** ((elo_b - elo_a) / 400))
+
+
+def add_elo(regular_data_details, full_stats):
+    
+    base_elo = 1000
+
+    elos = []
+    for season in sorted(set(regular_data_details["Season"])):
+        ss = regular_data_details.loc[regular_data_details["Season"] == season]
+        teams = set(ss["WTeamID"]) | set(ss["LTeamID"])
+        elo = dict(zip(teams, [base_elo] * len(teams)))
+
+        for _, row in ss.iterrows():
+            w_team, l_team = row["WTeamID"], row["LTeamID"]
+            w_elo, l_elo = elo[w_team], elo[l_team]
+            w_elo_new, l_elo_new = update_elo(w_elo, l_elo)
+            elo[w_team] = w_elo_new
+            elo[l_team] = l_elo_new
+        elo = pd.DataFrame.from_dict(elo, orient="index").reset_index()
+        elo = elo.rename({"index": "TeamID", 0: "elo"}, axis=1)
+        elo["Season"] = season
+        elos.append(elo)
+    elos = pd.concat(elos)
+
+    full_stats = pd.merge(full_stats, elos, on=["Season", "TeamID"], how="left")
+
+    return full_stats
