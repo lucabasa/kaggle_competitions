@@ -75,7 +75,7 @@ def plot_pred_prob(oof, test, y_train, y_test):
     fig.suptitle("Probabilities of victory", fontsize=15)
 
 
-def report_points(train, test, y_train, y_test, oof, preds, plot=True):
+def report_points(train, test, y_train, y_test, oof, preds, plot=True, **kwargs):
     mae_oof = round(mean_absolute_error(y_true=y_train, y_pred=oof), 4)
     mae_test = round(mean_absolute_error(y_true=y_test, y_pred=preds), 4)
     mse_oof = round(np.sqrt(mean_squared_error(y_true=y_train, y_pred=oof)), 4)
@@ -86,7 +86,7 @@ def report_points(train, test, y_train, y_test, oof, preds, plot=True):
     n_unsure_test = round((abs(preds) < 2).mean() * 100, 2)
     
     # transform into probabilities
-    spline_oof, spline_test = _point_to_proba(oof, y_train, preds)
+    spline_oof, spline_test = _point_to_proba(oof, y_train, preds, **kwargs)
     
     logloss_oof = round(log_loss(y_true=np.where(y_train > 0, 1, 0), y_pred=spline_oof), 4)
     logloss_test = round(log_loss(y_true=np.where(y_test > 0, 1, 0), y_pred=spline_test), 4)
