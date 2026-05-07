@@ -1,6 +1,6 @@
-__author__ = 'lucabasa'
-__version__ = '4.0.0'
-__status__ = 'development'
+__author__ = "lucabasa"
+__version__ = "4.0.0"
+__status__ = "development"
 
 
 import pandas as pd 
@@ -10,212 +10,244 @@ from source.add_info import big_wins, perc_OT_win, add_days
 
 
 def process_details(data, rank_loc=None):
-    '''
+    """
     This function processes individual games by creating advanced statistics
     It also flags if the win was a big one (difficult game, OT win, or Away win)
-    '''
+    """
     df = data.copy()
+
+    # adjustment factor for overtimes, as more stats are accumulated during overtimes
+    adjot = (40 + 5 * df["NumOT"]) / 40
+    adjcols = ["LScore", "WScore", 
+               "LFGM", "LFGA", "LFGM3", "LFGA3", "LFTM", "LFTA", "LOR", "LDR", "LAst", "LTO", "LStl", "LBlk", "LPF",
+               "WFGM", "WFGA", "WFGM3", "WFGA3", "WFTM", "WFTA", "WOR", "WDR", "WAst", "WTO", "WStl", "WBlk", "WPF"]
+    for col in adjcols:
+        df[col] = df[col] / adjot 
     
     df = big_wins(df, rank_loc)
         
-    for prefix in ['W', 'L']:
-        df[prefix+'FG_perc'] = df[prefix+'FGM'] / df[prefix+'FGA']
-        df[prefix+'FGM2'] = df[prefix+'FGM'] - df[prefix+'FGM3']
-        df[prefix+'FGA2'] = df[prefix+'FGA'] - df[prefix+'FGA3']
-        df[prefix+'FG2_perc'] = df[prefix+'FGM2'] / df[prefix+'FGA2']
-        df[prefix+'FG3_perc'] = df[prefix+'FGM3'] / df[prefix+'FGA3']
-        df[prefix+'FT_perc'] = df[prefix+'FTM'] / df[prefix+'FTA']
-        df[prefix+'Tot_Reb'] = df[prefix+'OR'] + df[prefix+'DR']
-        df[prefix+'FGM_no_ast'] = df[prefix+'FGM'] - df[prefix+'Ast']
-        df[prefix+'FGM_no_ast_perc'] = df[prefix+'FGM_no_ast'] / df[prefix+'FGM']
-        df[prefix+'possessions'] = df[prefix+'FGA'] - df[prefix+'OR'] + df[prefix+'TO'] + 0.475*df[prefix+'FTA']
-        df[prefix+'off_rating'] = df[prefix+'Score'] / df[prefix+'possessions'] * 100
-        df[prefix+'shtg_opportunity'] = 1 + (df[prefix+'OR'] - df[prefix+'TO']) / df[prefix+'possessions']
-        df[prefix+'TO_perposs'] = df[prefix+'TO'] / df[prefix+'possessions']
-        df[prefix+'True_shooting_perc'] = 0.5 * df[prefix+'Score'] / (df[prefix+'FGA'] + 0.475 * df[prefix+'FTA'])
-        df[prefix+'IE_temp'] = df[prefix+'Score'] + df[prefix+'FTM'] + df[prefix+'FGM'] + \
-                                df[prefix+'DR'] + 0.5*df[prefix+'OR'] - df[prefix+'FTA'] - df[prefix+'FGA'] + \
-                                df[prefix+'Ast'] + df[prefix+'Stl'] + 0.5*df[prefix+'Blk'] - df[prefix+'PF']
+    for prefix in ["W", "L"]:
+        df[prefix+"FG_perc"] = df[prefix+"FGM"] / df[prefix+"FGA"]
+        df[prefix+"FGM2"] = df[prefix+"FGM"] - df[prefix+"FGM3"]
+        df[prefix+"FGA2"] = df[prefix+"FGA"] - df[prefix+"FGA3"]
+        df[prefix+"FG2_perc"] = df[prefix+"FGM2"] / df[prefix+"FGA2"]
+        df[prefix+"FG3_perc"] = df[prefix+"FGM3"] / df[prefix+"FGA3"]
+        df[prefix+"FG3_ratio"] = df[prefix+"FGA3"] / df[prefix+"FGA2"]
+        df[prefix+"FT_perc"] = df[prefix+"FTM"] / df[prefix+"FTA"]
+        df[prefix+"Tot_Reb"] = df[prefix+"OR"] + df[prefix+"DR"]
+        df[prefix+"FGM_no_ast"] = df[prefix+"FGM"] - df[prefix+"Ast"]
+        df[prefix+"FGM_no_ast_perc"] = df[prefix+"FGM_no_ast"] / df[prefix+"FGM"]
+        df[prefix+"possessions"] = df[prefix+"FGA"] - df[prefix+"OR"] + df[prefix+"TO"] + 0.44*df[prefix+"FTA"]
+        df[prefix+"off_rating"] = df[prefix+"Score"] / df[prefix+"possessions"] * 100
+        df[prefix+"shtg_opportunity"] = 1 + (df[prefix+"OR"] - df[prefix+"TO"]) / df[prefix+"possessions"]
+        df[prefix+"TO_perposs"] = df[prefix+"TO"] / (df[prefix+"possessions"] + 0.0001)
+        df[prefix+"Ast_TO_ratio"] = df[prefix+"Ast"] / (df[prefix+"TO"] + 0.0001)
+        df[prefix+"True_shooting_perc"] = 0.5 * df[prefix+"Score"] / (df[prefix+"FGA"] + 0.44 * df[prefix+"FTA"])
+        df[prefix+"Eff_FG_perc"] = (df[prefix+"FGM"] + 0.5*df[prefix+"FGM3"]) / df[prefix+"FGA"]
+        df[prefix+"IE_temp"] = df[prefix+"Score"] + df[prefix+"FTM"] + df[prefix+"FGM"] + \
+                                df[prefix+"DR"] + 0.5*df[prefix+"OR"] - df[prefix+"FTA"] - df[prefix+"FGA"] + \
+                                df[prefix+"Ast"] + df[prefix+"Stl"] + 0.5*df[prefix+"Blk"] - df[prefix+"PF"]
 
-    df['Wdef_rating'] = df['Loff_rating']
-    df['Ldef_rating'] = df['Woff_rating']
-    df['Wopp_shtg_opportunity'] = df['Lshtg_opportunity']
-    df['Lopp_shtg_opportunity'] = df['Wshtg_opportunity']
-    df['Wopp_possessions'] = df['Lpossessions']
-    df['Lopp_possessions'] = df['Wpossessions']
-    df['Wopp_score'] = df['LScore']
-    df['Lopp_score'] = df['WScore']
+    df["Wdef_rating"] = df["Loff_rating"]
+    df["Ldef_rating"] = df["Woff_rating"]
+    df["Wopp_shtg_opportunity"] = df["Lshtg_opportunity"]
+    df["Lopp_shtg_opportunity"] = df["Wshtg_opportunity"]
+    df["Wopp_eff_FG_perc"] = df["LEff_FG_perc"]
+    df["Lopp_eff_FG_perc"] = df["WEff_FG_perc"]
+    df["Wopp_possessions"] = df["Lpossessions"]
+    df["Lopp_possessions"] = df["Wpossessions"]
+    df["Wopp_score"] = df["LScore"]
+    df["Lopp_score"] = df["WScore"]
+    df["Wopp_PF"] = df["LPF"]
+    df["Lopp_PF"] = df["WPF"]
+    df["Wopp_TO"] = df["LTO"]
+    df["Lopp_TO"] = df["WTO"]
     # These will be needed for the true shooting percentage when we aggregate
-    df['Wopp_FTA'] = df['LFTA']
-    df['Wopp_FGA'] = df['LFGA']
-    df['Lopp_FTA'] = df['WFTA']
-    df['Lopp_FGA'] = df['WFGA']
+    df["Wopp_FTA"] = df["LFTA"]
+    df["Wopp_FGA"] = df["LFGA"]
+    df["Lopp_FTA"] = df["WFTA"]
+    df["Lopp_FGA"] = df["WFGA"]
+    df["Wopp_FGM3"] = df["LFGM3"]
+    df["Lopp_FGM3"] = df["WFGM3"]
+    df["Wopp_FGM"] = df["LFGM"]
+    df["Lopp_FGM"] = df["WFGM"]
 
-    df['Wimpact'] = df['WIE_temp'] / (df['WIE_temp'] + df['LIE_temp'])
-    df['Limpact'] = df['LIE_temp'] / (df['WIE_temp'] + df['LIE_temp'])
+    df["Wimpact"] = df["WIE_temp"] / (df["WIE_temp"] + df["LIE_temp"])
+    df["Limpact"] = df["LIE_temp"] / (df["WIE_temp"] + df["LIE_temp"])
 
-    del df['WIE_temp']
-    del df['LIE_temp']
+    del df["WIE_temp"]
+    del df["LIE_temp"]
 
-    df[[col for col in df.columns if 'perc' in col]] = df[[col for col in df.columns if 'perc' in col]].fillna(0)
+    df[[col for col in df.columns if "perc" in col]] = df[[col for col in df.columns if "perc" in col]].fillna(0)
 
-#     df['WDef_effort'] = df['LFGA2']*2 + df['LFGA3']*3 - \
-#                         df['LFGM2']*2 - df['LFGM3']*3 - \
-#                         df['LOR']*( (df['LFGA2']/df['LFGA'])*2 + (df['LFGA3']/df['LFGA'])*3 ) + \
-#                         df['LFTA']*( (df['LFGA2']/df['LFGA'])*2 + (df['LFGA3']/df['LFGA'])*3 ) - df['LFTM']
-#     df['LDef_effort'] = df['WFGA2']*2 + df['WFGA3']*3 - \
-#                         df['WFGM2']*2 - df['WFGM3']*3 - \
-#                         df['WOR']*( (df['WFGA2']/df['WFGA'])*2 + (df['WFGA3']/df['WFGA'])*3 ) + \
-#                         df['WFTA']*( (df['WFGA2']/df['WFGA'])*2 + (df['WFGA3']/df['WFGA'])*3 ) - df['WFTM']
+#     df["WDef_effort"] = df["LFGA2"]*2 + df["LFGA3"]*3 - \
+#                         df["LFGM2"]*2 - df["LFGM3"]*3 - \
+#                         df["LOR"]*( (df["LFGA2"]/df["LFGA"])*2 + (df["LFGA3"]/df["LFGA"])*3 ) + \
+#                         df["LFTA"]*( (df["LFGA2"]/df["LFGA"])*2 + (df["LFGA3"]/df["LFGA"])*3 ) - df["LFTM"]
+#     df["LDef_effort"] = df["WFGA2"]*2 + df["WFGA3"]*3 - \
+#                         df["WFGM2"]*2 - df["WFGM3"]*3 - \
+#                         df["WOR"]*( (df["WFGA2"]/df["WFGA"])*2 + (df["WFGA3"]/df["WFGA"])*3 ) + \
+#                         df["WFTA"]*( (df["WFGA2"]/df["WFGA"])*2 + (df["WFGA3"]/df["WFGA"])*3 ) - df["WFTM"]
 
-    df['WDR_opportunity'] = df['WDR'] / (df['LFGA'] - df['LFGM'])
-    df['LDR_opportunity'] = df['LDR'] / (df['WFGA'] - df['WFGM'])
-    df['WOR_opportunity'] = df['WOR'] / (df['WFGA'] - df['WFGM'])
-    df['LOR_opportunity'] = df['LOR'] / (df['LFGA'] - df['LFGM'])
+    df["WDR_opportunity"] = df["WDR"] / (df["LFGA"] - df["LFGM"])
+    df["LDR_opportunity"] = df["LDR"] / (df["WFGA"] - df["WFGM"])
+    df["WOR_opportunity"] = df["WOR"] / (df["WFGA"] - df["WFGM"])
+    df["LOR_opportunity"] = df["LOR"] / (df["LFGA"] - df["LFGM"])
     
-    stats = ['Score', 'FGM', 'FGA', 'FGM3', 'FGA3', 'FTM', 
-             'FTA', 'OR', 'DR', 'Ast', 'TO', 'Stl', 'Blk', 
-             'PF', 'FGM2', 'FGA2', 'Tot_Reb', 'FGM_no_ast', 
-             'DR_opportunity', 'OR_opportunity', 'possessions',
-             'off_rating', 'def_rating', 'shtg_opportunity', 
-             'TO_perposs', 'impact', 'True_shooting_perc'] # 'Def_effort' 
+    stats = ["Score", "FGM", "FGA", "FGM3", "FGA3", "FTM",
+             "FTA", "OR", "DR", "Ast", "TO", "Stl", "Blk", 
+             "PF", "FGM2", "FGA2", "Tot_Reb", "FGM_no_ast", 
+             "DR_opportunity", "OR_opportunity", "possessions",
+             "off_rating", "def_rating", "shtg_opportunity", 
+             "TO_perposs", "impact", "True_shooting_perc",
+             "Ast_TO_ratio", "FG3_ratio", "Eff_FG_perc"] # "Def_effort" 
     
     for col in stats:
-        df[col+'_diff'] = df['W'+col] - df['L'+col]
-        #df[col+'_advantage'] = (df[col+'_diff'] > 0).astype(int)
+        df[col+"_diff"] = df["W"+col] - df["L"+col]
+        #df[col+"_advantage"] = (df[col+"_diff"] > 0).astype(int)
     
     return df
 
 
 def full_stats(data):
-    '''
+    """
     Take per game details, double the dataframe to account for lost games as well,
     Add percentage of OT wins
     Create seasonal means and percentages (like shooting percentage over the season)
-    '''
+    """
     df = data.copy()
 
-    to_select = [col for col in df.columns if col.startswith('W') 
-                                             and '_perc' not in col 
-                                             and 'Loc' not in col]
-    to_select += [col for col in df.columns if '_diff' in col or '_advantage' in col]
-    df_W = df[['Season', 'DayNum', 'NumOT'] + to_select].copy()
-    df_W.columns = df_W.columns.str.replace('W','')
-    df_W['N_wins'] = 1
+    to_select = [col for col in df.columns if col.startswith("W") 
+                                             and "_perc" not in col 
+                                             #and "Loc" not in col
+                ]
+    to_select += [col for col in df.columns if "_diff" in col or "_advantage" in col]
+    df_W = df[["Season", "DayNum", "NumOT"] + to_select].copy()
+    df_W.columns = df_W.columns.str.replace("W","")
+    df_W["N_wins"] = 1
+    df_W["Away"] = 0
+    df_W.loc[df_W["Loc"] != "H", "Away"] = 1
+    del df_W["Loc"]
+    df_W["OT_win"] = 0
+    df_W.loc[df_W["NumOT"] > 0, "OT_win"] = 1
 
-    to_select = [col for col in df.columns if col.startswith('L') 
-                                             and '_perc' not in col 
-                                             and 'Loc' not in col]
-    to_select += [col for col in df.columns if '_diff' in col or '_advantage' in col]
-    df_L = df[['Season', 'DayNum', 'NumOT'] + to_select].copy()
-    df_L.columns = df_L.columns.str.replace('L','')
-    df_L[[col for col in df.columns if '_diff' in col]] = - df_L[[col for col in df.columns if '_diff' in col]]
-    for col in [col for col in df.columns if '_advantage' in col]:
+    to_select = [col for col in df.columns if col.startswith("L") 
+                                             and "_perc" not in col 
+                                             and "Loc" not in col]
+    to_select += [col for col in df.columns if "_diff" in col or "_advantage" in col]
+    df_L = df[["Season", "DayNum", "NumOT"] + to_select].copy()
+    df_L.columns = df_L.columns.str.replace("L","")
+    df_L[[col for col in df.columns if "_diff" in col]] = - df_L[[col for col in df.columns if "_diff" in col]]
+    for col in [col for col in df.columns if "_advantage" in col]:
         df_L[col] = df_L[col].map({0:1, 1:0})
-    df_L['N_wins'] = 0
-    df_L['OT_win'] = 0
-    df_L['Away'] = 0
-    if 'top_team' in df_W.columns:
-        df_L['top_team'] = 0
-        df_L['upset'] = 0
+    df_L["N_wins"] = 0
+    df_L["OT_win"] = 0
+    df_L["Away"] = 0
+    if "top_team" in df_W.columns:
+        df_L["top_team"] = 0
+        df_L["upset"] = 0
 
     df = pd.concat([df_W, df_L], sort=True)
 
-    del df['DayNum']
+    del df["DayNum"]
 
     OT_perc = perc_OT_win(df)
 
-    not_use = ['NumOT']
+    not_use = ["NumOT"]
     to_use = [col for col in df.columns if col not in not_use]
 
-    means = df[to_use].groupby(['Season','TeamID'], as_index=False).mean()
+    means = df[to_use].groupby(["Season","TeamID"], as_index=False).mean()
 
-    sums = df[to_use].groupby(['Season','TeamID'], as_index=False).sum()
-    sums['FGM_perc'] = sums.FGM / sums.FGA
-    sums['FGM2_perc'] = sums.FGM2 / sums.FGA2
-    sums['FGM3_perc'] = sums.FGM3 / sums.FGA3
-    sums['FT_perc'] = sums.FTM / sums.FTA
-    sums['FGM_no_ast_perc'] = sums.FGM_no_ast / sums.FGM
-    sums['True_shooting_perc'] = 0.5 * sums['Score'] / (sums['FGA'] + 0.475 * sums['FTA'])
-    sums['Opp_True_shooting_perc'] = 0.5 * sums['opp_score'] / (sums['opp_FGA'] + 0.475 * sums['opp_FTA'])
-    to_use = ['Season', 'TeamID', 'FGM_perc',
-              'FGM2_perc', 'FGM3_perc', 'FT_perc', 
-              'FGM_no_ast_perc', 'True_shooting_perc', 'Opp_True_shooting_perc']
+    sums = df[to_use].groupby(["Season","TeamID"], as_index=False).sum()
+    sums["FGM_perc"] = sums.FGM / sums.FGA
+    sums["FGM2_perc"] = sums.FGM2 / sums.FGA2
+    sums["FGM3_perc"] = sums.FGM3 / sums.FGA3
+    sums["FT_perc"] = sums.FTM / sums.FTA
+    sums["FGM_no_ast_perc"] = sums.FGM_no_ast / sums.FGM
+    sums["True_shooting_perc"] = 0.5 * sums["Score"] / (sums["FGA"] + 0.44 * sums["FTA"])
+    sums["Opp_True_shooting_perc"] = 0.5 * sums["opp_score"] / (sums["opp_FGA"] + 0.44 * sums["opp_FTA"])
+    sums["Eff_shooting_perc"] = (sums["FGM"] + 0.5*sums["FGM3"]) / sums["FGA"]
+    sums["Opp_eff_shooting_perc"] = (sums["opp_FGM"] + 0.5*sums["opp_FGM3"]) / sums["opp_FGA"]
+
+    to_use = ["Season", "TeamID", "FGM_perc",
+              "FGM2_perc", "FGM3_perc", "FT_perc", 
+              "FGM_no_ast_perc", "True_shooting_perc", "Opp_True_shooting_perc",
+              "Eff_shooting_perc", "Opp_eff_shooting_perc"]
 
     sums = sums[to_use].fillna(0)
 
-    stats_tot = pd.merge(means, sums, on=['Season', 'TeamID'])
-    stats_tot = pd.merge(stats_tot, OT_perc, on=['Season', 'TeamID'], how='left')
-    stats_tot['OT_win_perc'] = stats_tot['OT_win_perc'].fillna(0)
+    stats_tot = pd.merge(means, sums, on=["Season", "TeamID"])
+    stats_tot = pd.merge(stats_tot, OT_perc, on=["Season", "TeamID"], how="left")
+    stats_tot["OT_win_perc"] = stats_tot["OT_win_perc"].fillna(0)
     
     return stats_tot
 
 
-def rolling_stats(data, season_info, window='30d'):
+def rolling_stats(data, season_info, window="30d"):
     df = data.copy()
 
     df = add_days(df, season_info)
 
-    to_select = [col for col in df.columns if col.startswith('W') 
-                                                 and '_perc' not in col 
-                                                 and 'Loc' not in col]
-    to_select += [col for col in df.columns if '_diff' in col or '_advantage' in col]
-    df_W = df[['Season', 'GameDay', 'NumOT', 
-               'game_lc', 'half2_lc', 'crunchtime_lc'] + to_select].copy()
-    df_W.columns = df_W.columns.str.replace('W','')
-    df_W['N_wins'] = 1
+    to_select = [col for col in df.columns if col.startswith("W") 
+                                                 and "_perc" not in col 
+                                                 and "Loc" not in col]
+    to_select += [col for col in df.columns if "_diff" in col or "_advantage" in col]
+    df_W = df[["Season", "GameDay", "NumOT", 
+               "game_lc", "half2_lc", "crunchtime_lc"] + to_select].copy()
+    df_W.columns = df_W.columns.str.replace("W","")
+    df_W["N_wins"] = 1
 
-    to_select = [col for col in df.columns if col.startswith('L') 
-                                             and '_perc' not in col 
-                                             and 'Loc' not in col]
-    to_select += [col for col in df.columns if '_diff' in col or '_advantage' in col]
-    df_L = df[['Season', 'GameDay', 'NumOT', 
-               'game_lc', 'half2_lc', 'crunchtime_lc'] + to_select].copy()
-    df_L.columns = df_L.columns.str.replace('L','')
-    df_L[[col for col in df.columns if '_diff' in col]] = - df_L[[col for col in df.columns if '_diff' in col]]
-    for col in [col for col in df.columns if '_advantage' in col]:
+    to_select = [col for col in df.columns if col.startswith("L") 
+                                             and "_perc" not in col 
+                                             and "Loc" not in col]
+    to_select += [col for col in df.columns if "_diff" in col or "_advantage" in col]
+    df_L = df[["Season", "GameDay", "NumOT", 
+               "game_lc", "half2_lc", "crunchtime_lc"] + to_select].copy()
+    df_L.columns = df_L.columns.str.replace("L","")
+    df_L[[col for col in df.columns if "_diff" in col]] = - df_L[[col for col in df.columns if "_diff" in col]]
+    for col in [col for col in df.columns if "_advantage" in col]:
         df_L[col] = df_L[col].map({0:1, 1:0})
-    df_L['N_wins'] = 0
-    df_L['OT_win'] = 0
-    df_L['Away'] = 0
-    if 'top_team' in df_W.columns:
-        df_L['top_team'] = 0
-        df_L['upset'] = 0
+    df_L["N_wins"] = 0
+    df_L["OT_win"] = 0
+    df_L["Away"] = 0
+    if "top_team" in df_W.columns:
+        df_L["top_team"] = 0
+        df_L["upset"] = 0
 
     df = pd.concat([df_W, df_L], sort=False)
 
-    not_use = ['NumOT', 'Season', 'TeamID']
+    not_use = ["NumOT", "Season", "TeamID"]
     to_use = [col for col in df.columns if col not in not_use]
 
-    means = df.groupby(['Season', 'TeamID'])[to_use].rolling(window, on='GameDay', 
-                                                           min_periods=1, closed='left').mean()
+    means = df.groupby(["Season", "TeamID"])[to_use].rolling(window, on="GameDay", 
+                                                           min_periods=1, closed="left").mean()
     means = means.dropna()
     means = means.reset_index()
-    del means['level_2']
+    del means["level_2"]
 
-    sums = df.groupby(['Season', 'TeamID'])[to_use].rolling(window, on='GameDay', 
-                                                      min_periods=1, closed='left').sum()
+    sums = df.groupby(["Season", "TeamID"])[to_use].rolling(window, on="GameDay", 
+                                                      min_periods=1, closed="left").sum()
     sums = sums.reset_index()
-    del sums['level_2']
+    del sums["level_2"]
     
-    sums['FGM_perc'] = sums.FGM / sums.FGA
-    sums['FGM2_perc'] = sums.FGM2 / sums.FGA2
-    sums['FGM3_perc'] = sums.FGM3 / sums.FGA3
-    sums['FT_perc'] = sums.FTM / sums.FTA
-    sums['FGM_no_ast_perc'] = sums.FGM_no_ast / sums.FGM
-    sums['True_shooting_perc'] = 0.5 * sums['Score'] / (sums['FGA'] + 0.475 * sums['FTA'])
-    sums['Opp_True_shooting_perc'] = 0.5 * sums['opp_score'] / (sums['opp_FGA'] + 0.475 * sums['opp_FTA'])
+    sums["FGM_perc"] = sums.FGM / sums.FGA
+    sums["FGM2_perc"] = sums.FGM2 / sums.FGA2
+    sums["FGM3_perc"] = sums.FGM3 / sums.FGA3
+    sums["FT_perc"] = sums.FTM / sums.FTA
+    sums["FGM_no_ast_perc"] = sums.FGM_no_ast / sums.FGM
+    sums["True_shooting_perc"] = 0.5 * sums["Score"] / (sums["FGA"] + 0.475 * sums["FTA"])
+    sums["Opp_True_shooting_perc"] = 0.5 * sums["opp_score"] / (sums["opp_FGA"] + 0.475 * sums["opp_FTA"])
     
-    to_use = ['Season', 'TeamID', 'GameDay', 'FGM_perc',
-              'FGM2_perc', 'FGM3_perc', 'FT_perc', 
-              'FGM_no_ast_perc', 'True_shooting_perc', 'Opp_True_shooting_perc']
+    to_use = ["Season", "TeamID", "GameDay", "FGM_perc",
+              "FGM2_perc", "FGM3_perc", "FT_perc", 
+              "FGM_no_ast_perc", "True_shooting_perc", "Opp_True_shooting_perc"]
 
     sums = sums[to_use].fillna(0)
 
-    stats_tot = pd.merge(means, sums, on=['Season', 'TeamID', 'GameDay'])
+    stats_tot = pd.merge(means, sums, on=["Season", "TeamID", "GameDay"])
 
     stats_tot = add_days(stats_tot, season_info, date=False)
-    del stats_tot['GameDay']
+    del stats_tot["GameDay"]
     
     return stats_tot
 
