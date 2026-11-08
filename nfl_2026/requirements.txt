@@ -1,0 +1,12 @@
+jupyterlab==4.5.6
+lightgbm==4.6.0
+matplotlib==3.10.0
+numpy==2.0.2
+pandas==2.3.3
+scikit-learn==1.6.1
+scipy==1.16.3
+seaborn==0.13.2
+shap==0.50.0
+statsmodels==0.14.6
+xgboost==3.2.0
+tubesml==1.2.0
